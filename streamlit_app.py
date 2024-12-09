@@ -30,3 +30,4 @@ elif analysis_type == "오목 게임":
 elif analysis_type == "수륙 양용 기차":
     display_amphibious_train_project()
 
+# TEST
