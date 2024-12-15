@@ -42,11 +42,10 @@ if "posts" not in st.session_state:
     st.session_state.posts = load_posts_from_file()
 
 # 데이터 검증 및 기본값 설정
-for post in st.session_state.posts:
-    if "time" not in post:
-        post["time"] = "N/A"  # 기본값: 작성 시간이 없는 경우
+if not st.session_state.posts:  # posts가 비어있으면 기본 값 추가
+    st.session_state.posts = []
 
-# 게시판 렌더링 함수
+
 def posting():
     st.title("📋 게시판")
 
