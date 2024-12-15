@@ -37,16 +37,17 @@ def edit_post(index, new_title, new_content):
     st.session_state.posts[index]["content"] = new_content
     save_posts_to_file()  # 데이터 저장
 
-# 게시판 데이터 초기화
-if "posts" not in st.session_state:
-    st.session_state.posts = load_posts_from_file()
-
-# 데이터 검증 및 기본값 설정
-if not st.session_state.posts:  # posts가 비어있으면 기본 값 추가
-    st.session_state.posts = []
+# 게시판 초기화 함수
+def initialize_posts():
+    if "posts" not in st.session_state:
+        st.session_state.posts = load_posts_from_file()  # 파일에서 데이터 로드
+    if not isinstance(st.session_state.posts, list):  # 비정상 데이터 체크
+        st.session_state.posts = []  # 빈 리스트로 초기화
 
 
 def posting():
+    initialize_posts()  # 게시판 상태 초기화
+
     st.title("📋 게시판")
 
     # 탭 설정
