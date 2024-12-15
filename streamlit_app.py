@@ -7,6 +7,7 @@ from AmphibiousTrainDevelopment import display_amphibious_train_project
 import json
 import os
 import pandas as pd
+from datetime import datetime
 
 # JSON 파일 경로 설정
 DATA_FILE = "posts.json"
@@ -29,7 +30,8 @@ if "posts" not in st.session_state:
 
 # 게시글 추가 함수
 def add_post(title, content):
-    st.session_state.posts.append({"title": title, "content": content})
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    st.session_state.posts.append({"title": title, "content": content, "time": current_time})
     save_posts_to_file()  # 데이터 저장
 
 # 게시글 삭제 함수
