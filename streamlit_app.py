@@ -24,9 +24,7 @@ def load_posts_from_file():
             return json.load(file)
     return []  # 파일이 없으면 빈 리스트 반환
 
-# 게시판 데이터 초기화
-if "posts" not in st.session_state:
-    st.session_state.posts = load_posts_from_file()
+
 
 # 게시글 추가 함수
 def add_post(title, content):
@@ -38,6 +36,18 @@ def add_post(title, content):
 def delete_post(index):
     st.session_state.posts.pop(index)
     save_posts_to_file()  # 데이터 저장
+
+
+# 게시글 수정 함수
+def edit_post(index, new_title, new_content):
+    st.session_state.posts[index]["title"] = new_title
+    st.session_state.posts[index]["content"] = new_content
+    save_posts_to_file()  # 데이터 저장
+
+
+# 게시판 데이터 초기화
+if "posts" not in st.session_state:
+    st.session_state.posts = load_posts_from_file()
 
 
 # 페이지 설정
@@ -90,10 +100,15 @@ elif analysis_type == "게시판":
                 else:
                     st.error("제목과 내용을 모두 입력하세요!")
     
-    # 탭 2: 보기
+    # 게시글 보기 섹션 (수정된 부분만 포함)
     with tab2:
         st.subheader("게시글 보기")
         if st.session_state.posts:
+            # 데이터 검증: time 키가 없으면 기본 값을 추가
+            for post in st.session_state.posts:
+                if "time" not in post:
+                    post["time"] = "N/A"  # 기본값: 작성 시간이 없는 경우
+
             df = pd.DataFrame(st.session_state.posts)
             st.dataframe(df, use_container_width=True)
             
@@ -108,7 +123,7 @@ elif analysis_type == "게시판":
                 post = st.session_state.posts[index]
                 st.markdown(f"### {post['title']}")
                 st.write(post["content"])
-                st.write(f"**작성 시간:** {post['time']}")
+                st.write(f"**작성 시간:** {post.get('time', 'N/A')}")  # 기본값으로 N/A 설정
         else:
             st.info("게시글이 없습니다.")
     
