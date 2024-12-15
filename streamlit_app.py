@@ -39,14 +39,10 @@ def delete_post(index):
     st.session_state.posts.pop(index)
     save_posts_to_file()  # 데이터 저장
 
-# 게시글 수정 함수
-def edit_post(index, new_title, new_content):
-    st.session_state.posts[index]["title"] = new_title
-    st.session_state.posts[index]["content"] = new_content
-    save_posts_to_file()  # 데이터 저장
 
 # 페이지 설정
 st.set_page_config(page_title="분석 도구 및 오목 게임", layout="wide")
+
 
 # 사이드바 메뉴
 st.sidebar.title("도구 선택")
@@ -63,7 +59,17 @@ analysis_type = st.sidebar.radio(
 )
 
 # 각 기능 실행
-if analysis_type == "게시판":
+if analysis_type == "3D 선형성 평가":
+    linearity_analysis()
+elif analysis_type == "속도 및 가속도 분석":
+    speed_analysis()
+elif analysis_type == "프로젝트 진행 간트 차트":
+    gantt_chart()
+elif analysis_type == "오목 게임":
+    gomoku_game()
+elif analysis_type == "수륙 양용 기차":
+    display_amphibious_train_project()
+elif analysis_type == "게시판":
     st.title("📋 게시판")
     
     # 탭 설정
