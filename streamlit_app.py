@@ -5,6 +5,7 @@ from gantt_chart import gantt_chart
 from gomoku_module import gomoku_game
 from AmphibiousTrainDevelopment import display_amphibious_train_project
 from posting import posting, initialize_posts
+from forRobot import robotsimulation
 
 # 페이지 설정
 st.set_page_config(page_title="분석 도구 및 오목 게임", layout="wide")
@@ -19,6 +20,7 @@ analysis_type = st.sidebar.radio(
         "프로젝트 진행 간트 차트",
         "오목 게임",
         "수륙 양용 기차",
+        "로봇 자율주행 시뮬레이션",
         "게시판"  # 게시판 메뉴 추가
      )
 )
@@ -37,5 +39,8 @@ elif analysis_type == "오목 게임":
     gomoku_game()
 elif analysis_type == "수륙 양용 기차":
     display_amphibious_train_project()
+elif analysis_type == "로봇 자율주행 시뮬레이션":
+    robotsimulation()
 elif analysis_type == "게시판":
     posting()
+
