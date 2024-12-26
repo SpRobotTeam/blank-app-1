@@ -43,7 +43,7 @@ elif analysis_type == "수륙 양용 기차":
     display_amphibious_train_project()
 elif analysis_type == "로봇 자율주행 시뮬레이션":
     robotsimulation()
-elif analysis_type == ""모터 용량 계산"":
+elif analysis_type == "모터 용량 계산":
     robot_calc()
 elif analysis_type == "게시판":
     posting()
