@@ -6,6 +6,7 @@ from gomoku_module import gomoku_game
 from AmphibiousTrainDevelopment import display_amphibious_train_project
 from posting import posting, initialize_posts
 from forRobot import robotsimulation
+from robot_calc import robot_calc
 
 # 페이지 설정
 st.set_page_config(page_title="분석 도구 및 오목 게임", layout="wide")
@@ -21,6 +22,7 @@ analysis_type = st.sidebar.radio(
         "오목 게임",
         "수륙 양용 기차",
         "로봇 자율주행 시뮬레이션",
+        "모터 용량 계산",
         "게시판"  # 게시판 메뉴 추가
      )
 )
@@ -41,6 +43,8 @@ elif analysis_type == "수륙 양용 기차":
     display_amphibious_train_project()
 elif analysis_type == "로봇 자율주행 시뮬레이션":
     robotsimulation()
+elif analysis_type == ""모터 용량 계산"":
+    robot_calc()
 elif analysis_type == "게시판":
     posting()
 
