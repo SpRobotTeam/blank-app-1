@@ -33,7 +33,7 @@ def calculate_gripper_forces(W: float, theta_deg: float, L_pivot: float, L_100mm
 
 def motor_calc():
     # 페이지 설정
-    st.set_page_config(page_title="로봇 그리퍼 모터 토크 계산기", layout="wide")
+    # st.set_page_config(page_title="로봇 그리퍼 모터 토크 계산기", layout="wide")
     
     # 제목
     st.title("로봇 그리퍼 모터 토크 계산기 (SI 단위)")
