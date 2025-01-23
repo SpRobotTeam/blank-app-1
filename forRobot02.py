@@ -1,10 +1,51 @@
+# Part 1: 기본 구조와 설정 클래스
 import numpy as np
 import matplotlib.pyplot as plt
 import streamlit as st
 import time
 import random
+from dataclasses import dataclass
+from typing import List, Tuple, Optional, Dict
+from enum import Enum
 
 def robotsimulation02():
+    # Configuration Classes
+    @dataclass
+    class EnvironmentConfig:
+        grid_size: int = 100
+        num_obstacles: int = 15
+        obstacle_size: int = 8
+
+    @dataclass
+    class RobotConfig:
+        num_robots: int = 2
+        sensor_range: int = 30
+        num_sensors: int = 9
+        safety_distance: int = 3
+        critical_distance: int = 5
+        turn_sensitivity: float = 0.5
+        robot_speed: int = 3
+        max_path_length: int = 50
+
+    @dataclass
+    class SLAMConfig:
+        confidence_threshold: float = 0.7
+        decay_factor: float = 0.95
+
+    @dataclass
+    class SimulationConfig:
+        total_steps: int = 200
+        base_interval: int = 20
+        visualization_steps: int = 5
+        environment: EnvironmentConfig = EnvironmentConfig()
+        robot: RobotConfig = RobotConfig()
+        slam: SLAMConfig = SLAMConfig()
+
+    class RobotStatus(Enum):
+        NORMAL = "Normal"
+        STUCK = "Stuck"
+        EMERGENCY_ESCAPE = "Emergency_Escape"
+
     st.title("Multi-Robot SLAM Simulation")
 
     # 탭 구성
@@ -28,9 +69,12 @@ def robotsimulation02():
             robot_speed = st.slider("Robot Speed", 1, 5, 3)
             
             st.subheader("Navigation Parameters")
-            safety_distance = st.slider("Safety Distance", 2, 8, 3, help="Minimum distance from obstacles")
-            critical_distance = st.slider("Critical Distance", 3, 10, 5, help="Distance to start avoiding obstacles")
-            turn_sensitivity = st.slider("Turn Sensitivity", 0.1, 1.0, 0.5, help="How aggressively robot turns")
+            safety_distance = st.slider("Safety Distance", 2, 8, 3, 
+                                     help="Minimum distance from obstacles")
+            critical_distance = st.slider("Critical Distance", 3, 10, 5, 
+                                       help="Distance to start avoiding obstacles")
+            turn_sensitivity = st.slider("Turn Sensitivity", 0.1, 1.0, 0.5, 
+                                      help="How aggressively robot turns")
 
         with col3:
             st.subheader("Simulation Parameters")
@@ -41,7 +85,10 @@ def robotsimulation02():
             st.subheader("SLAM Parameters")
             confidence_threshold = st.slider("Confidence Threshold", 0.1, 1.0, 0.7)
             decay_factor = st.slider("Memory Decay Factor", 0.9, 1.0, 0.95)
+            
+    # 계속...
 
+# Part 2: Environment and Sensor Systems
     def create_environment(grid_size, num_obstacles, max_size):
         environment = np.zeros((grid_size, grid_size))
         
@@ -61,6 +108,78 @@ def robotsimulation02():
 
         return environment
 
+    def measure_distance(environment, robot, sensor_range):
+        distances = []
+        angles = np.linspace(-np.pi/2, np.pi/2, num_sensors)
+        sensor_readings = []
+        
+        for angle in angles:
+            min_distance = sensor_range
+            theta = robot.theta + angle
+            hit_point = None
+            
+            for r in np.arange(0, sensor_range, 0.3):
+                x = int(robot.y + r * np.sin(theta))
+                y = int(robot.x + r * np.cos(theta))
+                
+                if not (0 <= x < grid_size and 0 <= y < grid_size):
+                    min_distance = r
+                    hit_point = (x, y)
+                    break
+                    
+                if environment[x, y] == 1:
+                    min_distance = r
+                    hit_point = (x, y)
+                    break
+            
+            distances.append(min_distance)
+            if hit_point:
+                sensor_readings.append((min_distance, theta, hit_point))
+        
+        return distances, sensor_readings
+
+    def update_slam_map(slam_map, robot, sensor_readings, confidence_threshold, decay_factor):
+        slam_map = slam_map * decay_factor
+        
+        for distance, theta, hit_point in sensor_readings:
+            if distance < sensor_range:
+                x, y = hit_point
+                if 0 <= x < grid_size and 0 <= y < grid_size:
+                    confidence = 1.0 - (distance / sensor_range)
+                    if confidence > confidence_threshold:
+                        slam_map[x, y] = min(1.0, slam_map[x, y] + confidence * 0.1)
+                        
+                        robot_x = int(robot.y)
+                        robot_y = int(robot.x)
+                        for alpha in np.linspace(0, 1, 20):
+                            free_x = int(robot_x + alpha * (x - robot_x))
+                            free_y = int(robot_y + alpha * (y - robot_y))
+                            if 0 <= free_x < grid_size and 0 <= free_y < grid_size:
+                                slam_map[free_x, free_y] *= 0.95
+        
+        return slam_map
+
+    def emergency_escape_behavior(robot, environment, robots):
+        escape_directions = []
+        for angle in np.linspace(0, 2*np.pi, 16):
+            distance = 0
+            for r in range(1, int(sensor_range)):
+                x = int(robot.x + r * np.cos(angle))
+                y = int(robot.y + r * np.sin(angle))
+                if not (0 <= x < grid_size and 0 <= y < grid_size) or environment[x, y] == 1:
+                    break
+                distance = r
+            escape_directions.append((angle, distance))
+        
+        best_direction = max(escape_directions, key=lambda x: x[1])
+        turn_angle = best_direction[0] - robot.theta
+        return robot.move(robot_speed * 2, turn_angle, environment, robots)
+    
+    # Part 2 끝
+
+
+
+# Part 3: Robot Navigation and Movement
     class Robot:
         def __init__(self, x, y, theta, id, safety_dist):
             # 기본 속성
@@ -243,169 +362,105 @@ def robotsimulation02():
                 return True
             return False
 
-    def measure_distance(environment, robot, sensor_range):
-        distances = []
-        angles = np.linspace(-np.pi/2, np.pi/2, num_sensors)
-        sensor_readings = []
-        
-        for angle in angles:
-            min_distance = sensor_range
-            theta = robot.theta + angle
-            hit_point = None
-            
-            for r in np.arange(0, sensor_range, 0.3):
-                x = int(robot.y + r * np.sin(theta))
-                y = int(robot.x + r * np.cos(theta))
-                
-                if not (0 <= x < grid_size and 0 <= y < grid_size):
-                    min_distance = r
-                    hit_point = (x, y)
-                    break
-                    
-                if environment[x, y] == 1:
-                    min_distance = r
-                    hit_point = (x, y)
-                    break
-            
-            distances.append(min_distance)
-            if hit_point:
-                sensor_readings.append((min_distance, theta, hit_point))
-        
-        return distances, sensor_readings
+    # Part 3 끝
 
-    def update_slam_map(slam_map, robot, sensor_readings, confidence_threshold, decay_factor):
-        slam_map = slam_map * decay_factor
-        
-        for distance, theta, hit_point in sensor_readings:
-            if distance < sensor_range:
-                x, y = hit_point
-                if 0 <= x < grid_size and 0 <= y < grid_size:
-                    confidence = 1.0 - (distance / sensor_range)
-                    if confidence > confidence_threshold:
-                        slam_map[x, y] = min(1.0, slam_map[x, y] + confidence * 0.1)
-                        
-                        robot_x = int(robot.y)
-                        robot_y = int(robot.x)
-                        for alpha in np.linspace(0, 1, 20):
-                            free_x = int(robot_x + alpha * (x - robot_x))
-                            free_y = int(robot_y + alpha * (y - robot_y))
-                            if 0 <= free_x < grid_size and 0 <= free_y < grid_size:
-                                slam_map[free_x, free_y] *= 0.95
-        
-        return slam_map
 
-    def emergency_escape_behavior(robot, environment, robots):
-        escape_directions = []
-        for angle in np.linspace(0, 2*np.pi, 16):
-            distance = 0
-            for r in range(1, int(sensor_range)):
-                x = int(robot.x + r * np.cos(angle))
-                y = int(robot.y + r * np.sin(angle))
-                if not (0 <= x < grid_size and 0 <= y < grid_size) or environment[x, y] == 1:
-                    break
-                distance = r
-            escape_directions.append((angle, distance))
-        
-        best_direction = max(escape_directions, key=lambda x: x[1])
-        turn_angle = best_direction[0] - robot.theta
-        return robot.move(robot_speed * 2, turn_angle, environment, robots)
-
+# Part 4: Autonomous Navigation and Control
     def autonomous_navigation(robot, distances, speed, critical_dist, turn_sense, environment, robots):
-            front_idx = len(distances) // 2
-            front_sector = distances[front_idx-1:front_idx+2]
-            left_sector = distances[:len(distances)//3]
-            right_sector = distances[-len(distances)//3:]
-            
-            front_dist = np.mean(front_sector)
-            left_dist = np.mean(left_sector)
-            right_dist = np.mean(right_sector)
-            
-            move_speed = speed
-            turn_angle = 0
-            
-            detection_distance = critical_dist * 3.0
-
-            nearby_robots = [r for r in robots if r.id != robot.id]
-            for other_robot in nearby_robots:
-                rel_x = other_robot.x - robot.x
-                rel_y = other_robot.y - robot.y
-                dist = np.sqrt(rel_x**2 + rel_y**2)
-                
-                if dist < detection_distance:
-                    angle_to_robot = np.arctan2(rel_y, rel_x)
-                    angle_diff = (angle_to_robot - robot.theta + np.pi) % (2 * np.pi) - np.pi
-                    
-                    if abs(angle_diff) < np.pi/2:
-                        move_speed *= 0.2
-                        turn_angle = np.sign(angle_diff) * np.pi * 0.8 * turn_sense
-                        if dist < critical_dist:
-                            move_speed = -speed
-
-            # Stuck 상태 처리 개선
-            if robot.is_stuck():
-                # 랜덤한 탐색 방향 설정
-                if robot.previous_direction is None:
-                    turn_angle = np.random.uniform(-np.pi, np.pi)
-                else:
-                    turn_angle = robot.previous_direction + np.random.uniform(-np.pi/2, np.pi/2)
-                
-                # 후진 거리를 동적으로 조절
-                reverse_distance = min(distances) if min(distances) < critical_dist else critical_dist
-                move_speed = -speed * (1.0 + reverse_distance/critical_dist)
-                
-                # 장애물이 적은 방향으로 회전
-                if left_dist > right_dist * 1.2:
-                    turn_angle = np.pi/2 * turn_sense
-                elif right_dist > left_dist * 1.2:
-                    turn_angle = -np.pi/2 * turn_sense
-                
-                # 연속된 stuck 상태에서 더 과감한 행동
-                if robot.stuck_count > 5:
-                    move_speed *= 1.5
-                    turn_angle *= 1.5
-                
-                # 이전 위치들을 고려한 탈출 방향 설정
-                if len(robot.last_positions) > 3:
-                    last_x = [pos[0] for pos in robot.last_positions[-3:]]
-                    last_y = [pos[1] for pos in robot.last_positions[-3:]]
-                    escape_x = 2 * robot.x - np.mean(last_x)
-                    escape_y = 2 * robot.y - np.mean(last_y)
-                    escape_angle = np.arctan2(escape_y - robot.y, escape_x - robot.x)
-                    turn_angle = escape_angle - robot.theta
-
-                robot.previous_direction = turn_angle
-                
-            else:
-                # 일반적인 장애물 회피 로직
-                if front_dist < detection_distance:
-                    distance_factor = max(0.1, (front_dist / detection_distance) ** 2)
-                    move_speed *= distance_factor
-                    
-                    if left_dist > right_dist * 1.5:
-                        turn_angle = np.pi * 0.7 * turn_sense
-                    elif right_dist > left_dist * 1.5:
-                        turn_angle = -np.pi * 0.7 * turn_sense
-                    else:
-                        turn_angle = np.pi * turn_sense
-                        move_speed *= 0.5
-                    
-                    if front_dist < robot.safety_distance * 1.5:
-                        move_speed = -speed * 0.7
-                        turn_angle *= 1.5
-                else:
-                    min_dist = min(distances)
-                    if min_dist < critical_dist * 2:
-                        turn_angle = np.random.uniform(-np.pi/3, np.pi/3) * turn_sense
-
-            # 최종 움직임 실행 전 보정
-            turn_angle = np.clip(turn_angle, -np.pi, np.pi)
-            move_speed = np.clip(move_speed, -speed * 1.5, speed * 1.5)
+        front_idx = len(distances) // 2
+        front_sector = distances[front_idx-1:front_idx+2]
+        left_sector = distances[:len(distances)//3]
+        right_sector = distances[-len(distances)//3:]
         
-            return robot.move(move_speed, turn_angle, environment, robots)
-    
+        front_dist = np.mean(front_sector)
+        left_dist = np.mean(left_sector)
+        right_dist = np.mean(right_sector)
+        
+        move_speed = speed
+        turn_angle = 0
+        
+        detection_distance = critical_dist * 3.0
 
-# Simulation 탭에서 실행되는 메인 시뮬레이션
-    with tab_simulation:
+        nearby_robots = [r for r in robots if r.id != robot.id]
+        for other_robot in nearby_robots:
+            rel_x = other_robot.x - robot.x
+            rel_y = other_robot.y - robot.y
+            dist = np.sqrt(rel_x**2 + rel_y**2)
+            
+            if dist < detection_distance:
+                angle_to_robot = np.arctan2(rel_y, rel_x)
+                angle_diff = (angle_to_robot - robot.theta + np.pi) % (2 * np.pi) - np.pi
+                
+                if abs(angle_diff) < np.pi/2:
+                    move_speed *= 0.2
+                    turn_angle = np.sign(angle_diff) * np.pi * 0.8 * turn_sense
+                    if dist < critical_dist:
+                        move_speed = -speed
+
+        # Stuck 상태 처리 개선
+        if robot.is_stuck():
+            # 랜덤한 탐색 방향 설정
+            if robot.previous_direction is None:
+                turn_angle = np.random.uniform(-np.pi, np.pi)
+            else:
+                turn_angle = robot.previous_direction + np.random.uniform(-np.pi/2, np.pi/2)
+            
+            # 후진 거리를 동적으로 조절
+            reverse_distance = min(distances) if min(distances) < critical_dist else critical_dist
+            move_speed = -speed * (1.0 + reverse_distance/critical_dist)
+            
+            # 장애물이 적은 방향으로 회전
+            if left_dist > right_dist * 1.2:
+                turn_angle = np.pi/2 * turn_sense
+            elif right_dist > left_dist * 1.2:
+                turn_angle = -np.pi/2 * turn_sense
+            
+            # 연속된 stuck 상태에서 더 과감한 행동
+            if robot.stuck_count > 5:
+                move_speed *= 1.5
+                turn_angle *= 1.5
+            
+            # 이전 위치들을 고려한 탈출 방향 설정
+            if len(robot.last_positions) > 3:
+                last_x = [pos[0] for pos in robot.last_positions[-3:]]
+                last_y = [pos[1] for pos in robot.last_positions[-3:]]
+                escape_x = 2 * robot.x - np.mean(last_x)
+                escape_y = 2 * robot.y - np.mean(last_y)
+                escape_angle = np.arctan2(escape_y - robot.y, escape_x - robot.x)
+                turn_angle = escape_angle - robot.theta
+
+            robot.previous_direction = turn_angle
+            
+        else:
+            # 일반적인 장애물 회피 로직
+            if front_dist < detection_distance:
+                distance_factor = max(0.1, (front_dist / detection_distance) ** 2)
+                move_speed *= distance_factor
+                
+                if left_dist > right_dist * 1.5:
+                    turn_angle = np.pi * 0.7 * turn_sense
+                elif right_dist > left_dist * 1.5:
+                    turn_angle = -np.pi * 0.7 * turn_sense
+                else:
+                    turn_angle = np.pi * turn_sense
+                    move_speed *= 0.5
+                
+                if front_dist < robot.safety_distance * 1.5:
+                    move_speed = -speed * 0.7
+                    turn_angle *= 1.5
+            else:
+                min_dist = min(distances)
+                if min_dist < critical_dist * 2:
+                    turn_angle = np.random.uniform(-np.pi/3, np.pi/3) * turn_sense
+
+        # 최종 움직임 실행 전 보정
+        turn_angle = np.clip(turn_angle, -np.pi, np.pi)
+        move_speed = np.clip(move_speed, -speed * 1.5, speed * 1.5)
+    
+        return robot.move(move_speed, turn_angle, environment, robots)
+
+    # Control 구현
+    def run_simulation(environment, robots, slam_map):
         # 시뮬레이션 제어 영역
         control_col1, control_col2, control_col3 = st.columns([1, 2, 1])
         
@@ -426,28 +481,39 @@ def robotsimulation02():
             if 'simulation_paused' not in st.session_state:
                 st.session_state.simulation_paused = False
             
-            environment = create_environment(grid_size, num_obstacles, obstacle_size)
-            slam_map = np.zeros_like(environment)
-            
-            robots = []
-            for i in range(num_robots):
-                while True:
-                    x = random.randint(10, grid_size - 10)
-                    y = random.randint(10, grid_size - 10)
-                    if environment[y, x] == 0:
-                        robots.append(Robot(x, y, random.random() * 2 * np.pi, i, safety_distance))
-                        break
-
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
             placeholder = st.empty()
             progress_bar = st.progress(0)
-            
-            # 일시정지 상태 표시
-            # status_text = st.empty()
             status_container = st.empty()
 
+            return environment, robots, slam_map, fig, placeholder, progress_bar, status_container, speed_multiplier, pause_button
+
+        return None
+
+    # Part 4 끝
 
 
+# Part 5: Main Simulation Execution
+    # Simulation 탭에서 실행되는 메인 시뮬레이션
+    with tab_simulation:
+        # 환경과 로봇 초기화
+        environment = create_environment(grid_size, num_obstacles, obstacle_size)
+        slam_map = np.zeros_like(environment)
+        
+        robots = []
+        for i in range(num_robots):
+            while True:
+                x = random.randint(10, grid_size - 10)
+                y = random.randint(10, grid_size - 10)
+                if environment[y, x] == 0:
+                    robots.append(Robot(x, y, random.random() * 2 * np.pi, i, safety_distance))
+                    break
+        
+        # 시뮬레이션 실행
+        simulation_results = run_simulation(environment, robots, slam_map)
+        if simulation_results is not None:
+            (environment, robots, slam_map, fig, placeholder, 
+             progress_bar, status_container, speed_multiplier, pause_button) = simulation_results
 
             for step in range(total_steps):
                 # 일시정지 버튼 상태 확인
@@ -456,16 +522,12 @@ def robotsimulation02():
                 
                 # 일시정지 상태 표시
                 if st.session_state.simulation_paused:
-                #     status_text.warning("Simulation Paused")
-                #     continue
                     status_container.warning("Simulation Paused")
                     continue
-                # else:
-                #     status_text.info("Simulation Running")
                 else:
                     status_container.info("Simulation Running")
 
-
+                # 로봇 상태 업데이트 및 이동
                 for robot in robots:
                     robot.update_status(step)
                     distances, sensor_readings = measure_distance(environment, robot, sensor_range)
@@ -486,6 +548,7 @@ def robotsimulation02():
                             decay_factor
                         )
 
+                # 시각화 업데이트
                 if step % visualization_steps == 0:
                     ax1.clear()
                     ax2.clear()
@@ -537,7 +600,7 @@ def robotsimulation02():
                                    color=robot_color, alpha=0.5, linewidth=1)
 
                         # 상태 정보 표시
-                        robot_status_text = (  # status_text 대신 robot_status_text 사용
+                        robot_status_text = (
                             f'Robot {robot.id}:\n'
                             f'Status: {robot.status}\n'
                             f'Time in status: {robot.time_in_status}\n'
@@ -560,3 +623,7 @@ def robotsimulation02():
                 time.sleep(actual_interval / 1000)
 
             st.success("Simulation completed!")
+
+    # robotsimulation02 함수 종료
+
+
