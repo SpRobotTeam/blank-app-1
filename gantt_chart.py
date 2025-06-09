@@ -169,7 +169,7 @@ def gantt_chart():
                 
                 # 파일에 저장
                 export_df.to_excel(writer, index=False, sheet_name='Gantt Chart')
-                writer.save()  # 명시적으로 저장
+                # writer.save() 제거 - with 구문이 자동으로 저장함
             
             # 버퍼 위치를 처음으로 되돌림
             buffer.seek(0)
