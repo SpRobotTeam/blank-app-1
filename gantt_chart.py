@@ -152,12 +152,6 @@ def gantt_chart():
             )
             return
 
-    # 디버깅: 데이터 확인
-    st.write("### 디버그: 업로드된 데이터")
-    st.write(f"데이터 행 수: {len(df)}")
-    st.write("데이터 샘플:")
-    st.dataframe(df.head())
-    
     # 사용자 설정 옵션
     st.sidebar.header("설정 옵션")
     order_by = st.radio(
@@ -218,9 +212,10 @@ def gantt_chart():
         '조립': '#fd7e14',   # 오렌지
         '양산': '#6610f2',   # 인디고
         '이설': '#e83e8c',   # 핑크
-        '실시': '#20c997',   # 틸
-        '가게': '#ffc107',   # 엠버
-        '기계': '#dc3545',   # 레드
+        '설치': '#20c997',   # 틸
+        '설치(거제)': '#ffc107',   # 엠버
+        '거제(거제)': '#dc3545',   # 레드
+        '양산(거제)': '#28a745',   # 그린
     }
     
     # 상위 카테고리에 없는 경우 랜덤 색상 생성
@@ -228,7 +223,7 @@ def gantt_chart():
         if category not in category_colors:
             category_colors[category] = f"#{''.join([random.choice('0123456789ABCDEF') for _ in range(6)])}"
     
-    # 간트 차트용 데이터 준비
+    # 간트 차트용 데이터 준비 - px.timeline 사용을 위해 단순화
     gantt_data = []
     
     # 계획 일정 데이터 추가
@@ -238,13 +233,12 @@ def gantt_chart():
         
         # 계획 일정 추가
         gantt_data.append({
-            'Task': task_name,
+            'Task': task_name + " (계획)",
             'Start': row['Start'],
             'End': row['End'],
             'Category': category,
             'Type': '계획',
-            'Display_Name': f"{task_name}",
-            'Opacity': 0.4
+            'Resource': task_name
         })
         
         # 실제 시작일이 있으면 실제 일정도 추가
@@ -254,70 +248,68 @@ def gantt_chart():
             actual_end = row['Actual_Start'] + timedelta(seconds=actual_duration)
             
             gantt_data.append({
-                'Task': task_name,
+                'Task': task_name + " (실제)",
                 'Start': row['Actual_Start'],
                 'End': actual_end,
                 'Category': category,
                 'Type': '실제',
-                'Display_Name': f"{task_name}",
-                'Opacity': 1.0
+                'Resource': task_name
             })
     
     # 간트 차트를 위한 DataFrame 생성
     gantt_df = pd.DataFrame(gantt_data)
     
-    st.write("### 디버그: 간트 데이터")
-    st.write(f"간트 데이터 행 수: {len(gantt_df)}")
-    st.dataframe(gantt_df)
-    
     if len(gantt_df) > 0:
-        # 간트 차트 생성 - go.Bar 사용
-        fig = go.Figure()
+        # px.timeline을 사용해서 간트 차트 생성
+        fig = px.timeline(
+            gantt_df,
+            x_start="Start",
+            x_end="End",
+            y="Resource",  # 작업명으로 그룹핑
+            color="Category",
+            color_discrete_map=category_colors,
+            title="프로젝트 진행 간트 차트",
+            hover_data=["Type"]
+        )
         
-        # 작업별로 그룹핑
-        tasks = gantt_df['Task'].unique()
-        
-        for task in tasks:
-            task_data = gantt_df[gantt_df['Task'] == task]
+        # 각 trace의 투명도 조정
+        for i, trace in enumerate(fig.data):
+            # trace 이름(카테고리)으로 해당 데이터 찾기
+            category_name = trace.name
+            category_data = gantt_df[gantt_df['Category'] == category_name]
             
-            for _, row in task_data.iterrows():
-                category = row['Category']
-                color = category_colors.get(category, '#808080')
+            # 계획 데이터가 포함된 카테고리인 경우 투명도 조정
+            if '계획' in ' '.join(category_data['Type'].values):
+                # 모든 막대를 투명하게 설정
+                trace.opacity = 0.4
+        
+        # 실제 진행 막대를 별도로 추가 (진한 색상)
+        actual_data = gantt_df[gantt_df['Type'] == '실제']
+        if len(actual_data) > 0:
+            for category in actual_data['Category'].unique():
+                cat_actual = actual_data[actual_data['Category'] == category]
                 
-                # 시간 길이 계산 (일 단위)
-                duration = (row['End'] - row['Start']).total_seconds() / (24 * 3600)
-                
-                # 투명도 설정
-                opacity = 0.4 if row['Type'] == '계획' else 1.0
-                
-                # 범례 표시 여부 (각 카테고리의 첫 번째만)
-                show_legend = False
-                if row['Type'] == '계획':  # 계획만 범례에 표시
-                    existing_categories = [trace.name for trace in fig.data if trace.name]
-                    if category not in existing_categories:
-                        show_legend = True
-                
-                fig.add_trace(go.Bar(
-                    name=category if show_legend else None,
-                    x=[duration],
-                    y=[task],
-                    base=[row['Start']],
-                    orientation='h',
-                    marker=dict(
-                        color=color,
-                        opacity=opacity,
-                        line=dict(width=1 if row['Type'] == '계획' else 2, 
-                                 color='white' if row['Type'] == '계획' else 'darkgray')
-                    ),
-                    showlegend=show_legend,
-                    legendgroup=category,
-                    hovertemplate=f'<b>{task}</b><br>' +
-                                 f'카테고리: {category}<br>' +
-                                 f'유형: {row["Type"]}<br>' +
-                                 f'시작: {row["Start"].strftime("%Y-%m-%d")}<br>' +
-                                 f'종료: {row["End"].strftime("%Y-%m-%d")}<br>' +
-                                 '<extra></extra>'
-                ))
+                # 실제 진행 막대 추가
+                for _, row in cat_actual.iterrows():
+                    fig.add_trace(go.Bar(
+                        name=f"{category} (실제)" if category not in [t.name for t in fig.data] else "",
+                        x=[row['End'] - row['Start']],
+                        y=[row['Resource']],
+                        base=[row['Start']],
+                        orientation='h',
+                        marker=dict(
+                            color=category_colors.get(category, '#808080'),
+                            opacity=1.0,
+                            line=dict(width=1, color='darkgray')
+                        ),
+                        showlegend=False,
+                        hovertemplate=f"<b>{row['Resource']}</b><br>" +
+                                     f"카테고리: {category}<br>" +
+                                     f"유형: 실제<br>" +
+                                     f"시작: {row['Start'].strftime('%Y-%m-%d')}<br>" +
+                                     f"종료: {row['End'].strftime('%Y-%m-%d')}<br>" +
+                                     "<extra></extra>"
+                    ))
 
         # 차트 레이아웃 조정
         fig.update_layout(
@@ -345,7 +337,7 @@ def gantt_chart():
             ),
             font=dict(size=12),
             bargap=0.2,
-            height=max(400, len(sorted_df) * 50 + 200),
+            height=max(400, len(sorted_df) * 60 + 200),
             legend=dict(
                 orientation="h",
                 yanchor="bottom",
@@ -353,14 +345,14 @@ def gantt_chart():
                 xanchor="right",
                 x=1
             ),
-            margin=dict(l=50, r=50, t=80, b=50)
+            margin=dict(l=50, r=50, t=100, b=50)
         )
         
         # 범례에 계획/실제 구분 설명 추가
         fig.add_annotation(
             text="■ 연한색: 계획 일정 | ■ 진한색: 실제 진행",
             xref="paper", yref="paper",
-            x=0, y=1.08,
+            x=0, y=1.15,
             showarrow=False,
             font=dict(size=11, color="gray"),
             align="left"
