@@ -71,7 +71,7 @@ def gantt_chart():
             df['Actual_Start'] = None
             
         actual_start_date = st.sidebar.date_input(
-            "진행 시작일",
+            "실제 시작일",
             value=df.at[task_idx, 'Actual_Start'] if pd.notna(df.at[task_idx, 'Actual_Start']) else df.at[task_idx, 'Start'],
             key="actual_start"
         )
@@ -144,7 +144,7 @@ def gantt_chart():
             )
         )
 
-        # 진행률 추가 표시
+        # 진행률 추가 표시 (코멘트 없이)
         for i, row in sorted_df.iterrows():
             # 진행률 계산을 명시적으로 timedelta로 변환
             duration = row['End'] - row['Start']
@@ -152,8 +152,8 @@ def gantt_chart():
                 seconds=duration.total_seconds() * row['Progress'] / 100
             )
             
-            # 진행률 표시 시작 위치 설정
-            start_point = row['Start']
+            # 시작점 설정 (실제 시작일이 있으면 실제 시작일, 없으면 계획 시작일)
+            start_point = row['Actual_Start'] if pd.notna(row['Actual_Start']) else row['Start']
             
             fig.add_shape(
                 type='rect',
@@ -340,13 +340,13 @@ def gantt_chart():
                                'Progress', 'Expected_Progress', 'Progress_Diff', 'Status']].copy()
         
         # 열 이름 변경
-        display_df.columns = ['작업', '카테고리', '계획 시작', '계획 종료', '진행시작', 
+        display_df.columns = ['작업', '카테고리', '계획 시작', '계획 종료', '실제 시작', 
                              '실제 진행률(%)', '예상 진행률(%)', '진행률 차이(%)', '상태']
         
         # 날짜 형식 변환 (스트림릿에서 표시용)
         display_df['계획 시작'] = display_df['계획 시작'].dt.strftime('%Y-%m-%d')
         display_df['계획 종료'] = display_df['계획 종료'].dt.strftime('%Y-%m-%d')
-        display_df['진행시작'] = display_df['진행시작'].apply(lambda x: x.strftime('%Y-%m-%d') if pd.notna(x) else '')
+        display_df['실제 시작'] = display_df['실제 시작'].apply(lambda x: x.strftime('%Y-%m-%d') if pd.notna(x) else '')
         
         # 스타일링 대신 색상으로 상태 구분
         st.write("색상 코드: 🟩 완료  🟦 진행 중  ⬜ 예정  🟥 지연")
