@@ -113,19 +113,28 @@ def gantt_chart():
         # 사용자 정의 색상 적용
         fig.update_traces(marker=dict(colorscale=list(color_map.values())))
 
-        # 실제 시작일 마커 추가 (실제 시작일이 있는 경우)
-        if 'Actual_Start' in df.columns:
-            for i, row in sorted_df.iterrows():
-                if pd.notna(row['Actual_Start']):
-                    # 실제 시작일을 다이아몬드 마커로 표시
-                    fig.add_trace(go.Scatter(
-                        x=[row['Actual_Start']],
-                        y=[i],
-                        mode='markers',
-                        marker=dict(symbol='diamond', size=12, color='black'),
-                        name='실제 시작일',
-                        showlegend=(i == 0)  # 첫 번째 항목만 범례에 표시
-                    ))
+        # 실제 시작일 표시 방식 개선 - 별도 마커 대신 화살표로 표시
+        for i, row in sorted_df.iterrows():
+            if pd.notna(row['Actual_Start']):
+                # 화살표와 텍스트로 실제 시작일 표시
+                fig.add_annotation(
+                    x=row['Actual_Start'],
+                    y=i,
+                    text="▼ 실제 시작",
+                    showarrow=True,
+                    arrowhead=2,
+                    arrowsize=1,
+                    arrowwidth=2,
+                    arrowcolor="black",
+                    ax=0,
+                    ay=-20,
+                    font=dict(size=10, color="black"),
+                    bgcolor="rgba(255, 255, 255, 0.7)",
+                    bordercolor="black",
+                    borderwidth=1,
+                    borderpad=2,
+                    opacity=0.8
+                )
 
         fig.update_yaxes(categoryorder='array', categoryarray=sorted_df['Task'])  # 엑셀 파일의 순서를 유지
 
@@ -149,7 +158,13 @@ def gantt_chart():
             title=dict(font=dict(size=20)),  # 차트 제목 크기 조정
             font=dict(size=14),  # 차트 전체 텍스트 크기 조정
             bargap=0.3,  # Bar 간격 조정
-            height=800  # 차트 높이 조정
+            height=800,  # 차트 높이 조정
+            legend=dict(
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
+                x=0.01
+            )
         )
 
         # 진행률 추가 표시
@@ -198,6 +213,25 @@ def gantt_chart():
             ax=50,
             ay=-30
         )
+
+        # 실제 시작일 범례 추가
+        fig.add_trace(go.Scatter(
+            x=[None],
+            y=[None],
+            mode='lines',
+            line=dict(color='black', dash='solid'),
+            name='계획 일정',
+            showlegend=True
+        ))
+        
+        fig.add_trace(go.Scatter(
+            x=[None],
+            y=[None],
+            mode='lines',
+            line=dict(color='green', width=6),
+            name='진행률',
+            showlegend=True
+        ))
 
         # Streamlit 그래프 출력
         st.plotly_chart(fig, use_container_width=True)
