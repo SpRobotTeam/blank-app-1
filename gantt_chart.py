@@ -155,18 +155,34 @@ def gantt_chart():
         # 정렬 확인용 로그 출력 (Streamlit 앱에서 확인 가능)
         st.write("정렬된 데이터프레임:", sorted_df)
 
-        # 작업을 엑셀로 내보내기
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            sorted_df.to_excel(writer, index=False, sheet_name='Gantt Chart')
-            processed_data = output.getvalue()
-
-        st.download_button(
-            label="엑셀로 내보내기",
-            data=processed_data,
-            file_name='project_schedule_export.xlsx',
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
+        # 작업을 엑셀로 내보내기 - 수정된 부분
+        try:
+            # 수정: BytesIO 객체 처리와 엑셀 저장 방식 개선
+            buffer = BytesIO()
+            with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                # 날짜 포맷 문제 해결을 위해 복사본 생성 및 처리
+                export_df = sorted_df.copy()
+                
+                # 날짜 열을 문자열로 변환하여 포맷 문제 방지
+                export_df['Start'] = export_df['Start'].dt.strftime('%Y-%m-%d')
+                export_df['End'] = export_df['End'].dt.strftime('%Y-%m-%d')
+                
+                # 파일에 저장
+                export_df.to_excel(writer, index=False, sheet_name='Gantt Chart')
+                writer.save()  # 명시적으로 저장
+            
+            # 버퍼 위치를 처음으로 되돌림
+            buffer.seek(0)
+            
+            # 다운로드 버튼 표시
+            st.download_button(
+                label="엑셀로 내보내기",
+                data=buffer,
+                file_name='project_schedule_export.xlsx',
+                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+        except Exception as e:
+            st.error(f"엑셀 파일 생성 중 오류가 발생했습니다: {e}")
 
         # 드래그로 수정 기능 (현재 Streamlit과 Plotly만으로는 지원되지 않음)
         st.info("작업을 드래그로 수정하는 기능은 현재 지원되지 않습니다. 대신 엑셀에서 직접 수정하거나 입력된 데이터를 수정해 주세요.")
