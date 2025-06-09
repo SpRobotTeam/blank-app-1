@@ -208,13 +208,30 @@ def gantt_chart():
     # 간트 차트용 데이터 준비 - 계획과 실제 일정을 모두 표시하기 위해 데이터 가공
     gantt_data = []
     
+    # 카테고리별 색상 지정 (고정 색상 사용)
+    category_colors = {
+        '기획': '#4e73df',  # 파란색
+        '설계': '#1cc88a',  # 초록색
+        '개발': '#f6c23e',  # 노란색
+        '테스트': '#e74a3b',  # 빨간색
+        '운영': '#36b9cc',   # 터코이즈
+        '제작': '#6f42c1',   # 보라색
+    }
+    
+    # 상위 카테고리에 없는 경우 랜덤 색상 생성
+    for category in sorted_df['Category'].unique():
+        if category not in category_colors:
+            category_colors[category] = f"#{''.join([random.choice('0123456789ABCDEF') for _ in range(6)])}"
+    
     # 계획 일정 데이터 추가
     for idx, row in sorted_df.iterrows():
+        # 계획 일정 - 더 투명하게
         gantt_data.append({
             'Task': row['Task'],
             'Start': row['Start'],
             'End': row['End'],
             'Category': row['Category'],
+            'Color': category_colors.get(row['Category'], '#808080') + '80',  # 50% 투명도 추가
             'Type': '계획'
         })
         
@@ -229,26 +246,33 @@ def gantt_chart():
                 'Start': row['Actual_Start'],
                 'End': actual_end,
                 'Category': row['Category'],
+                'Color': category_colors.get(row['Category'], '#808080'),  # 진하게
                 'Type': '실제'
             })
     
     # 간트 차트를 위한 DataFrame 생성
     gantt_df = pd.DataFrame(gantt_data)
     
-    # 유형별 색상 정의
-    colors = {'계획': 'lightblue', '실제': 'green'}
-    
-    # 간트 차트 생성
+    # 간트 차트 생성 - 카테고리별 색상 설정
     fig = px.timeline(
         gantt_df, 
         x_start="Start", 
         x_end="End", 
         y="Task",
-        color="Type",  # 유형(계획/실제)에 따라 색상 구분
-        color_discrete_map=colors,
+        color="Category",  # 카테고리별 색상 구분
+        color_discrete_map=category_colors,
         title='프로젝트 진행 간트 차트',
-        labels={'Task': '작업', 'Start': '시작 날짜', 'End': '종료 날짜', 'Type': '일정 유형'}
+        labels={'Task': '작업', 'Start': '시작 날짜', 'End': '종료 날짜', 'Category': '카테고리'}
     )
+    
+    # 각 데이터 포인트의 막대에 색상 지정 (type에 따라 투명도 조절)
+    for i, d in enumerate(fig.data):
+        fig.data[i].marker.color = gantt_df[gantt_df['Category'] == d.name]['Color'].tolist()
+        # 일정 유형에 따라 선 두께 조절
+        if '실제' in gantt_df[gantt_df['Category'] == d.name]['Type'].values:
+            fig.data[i].marker.line.width = 2  # 실제 일정은 두께 있게
+        else:
+            fig.data[i].marker.line.width = 0  # 계획 일정은 두께 없이
 
     # 차트 레이아웃 조정 (가로 및 세로 격자 추가)
     fig.update_layout(
@@ -305,24 +329,36 @@ def gantt_chart():
         ay=-30
     )
 
-    # 범례 추가 - 직접 스타일 지정
+    # 범례 추가 - 카테고리 및 일정 유형 설명
+    # 주요 카테고리별 색상 범례 추가
+    for category, color in list(category_colors.items())[:5]:  # 주요 5개 카테고리만 표시
     fig.add_trace(go.Scatter(
         x=[None],
         y=[None],
-        mode='lines',
-        line=dict(color='lightblue', width=10),
-        name='계획 일정',
-        showlegend=True
-    ))
+        mode='markers',
+        marker=dict(size=10, color=color),
+            name=category,
+            showlegend=True
+        ))
     
+    # 일정 유형 범례 추가
     fig.add_trace(go.Scatter(
-        x=[None],
-        y=[None],
-        mode='lines',
-        line=dict(color='green', width=10),
-        name='실제 진행',
-        showlegend=True
-    ))
+    x=[None],
+    y=[None],
+    mode='lines',
+        line=dict(color='#888888', width=10, dash='solid'),
+            name='계획 일정 (투명)',
+            showlegend=True
+        ))
+        
+        fig.add_trace(go.Scatter(
+            x=[None],
+            y=[None],
+            mode='lines',
+            line=dict(color='#444444', width=10, dash='solid'),
+            name='실제 진행 (진한 색상)',
+            showlegend=True
+        ))
 
     # Streamlit 그래프 출력
     st.plotly_chart(fig, use_container_width=True)
