@@ -271,42 +271,52 @@ def gantt_chart():
     st.dataframe(gantt_df)
     
     if len(gantt_df) > 0:
-        # 간트 차트 생성
-        fig = px.timeline(
-            gantt_df,
-            x_start="Start",
-            x_end="End",
-            y="Task",
-            color="Category",
-            color_discrete_map=category_colors,
-            title="프로젝트 진행 간트 차트",
-            hover_data=["Type", "Category"]
-        )
+        # 간트 차트 생성 - go.Bar 사용
+        fig = go.Figure()
         
-        # 투명도 적용 - 계획 일정은 연하게
-        for i, trace in enumerate(fig.data):
-            category_name = trace.name
-            category_data = gantt_df[gantt_df['Category'] == category_name]
+        # 작업별로 그룹핑
+        tasks = gantt_df['Task'].unique()
+        
+        for task in tasks:
+            task_data = gantt_df[gantt_df['Task'] == task]
             
-            # 계획 일정인 항목들의 투명도 조정
-            plan_count = len(category_data[category_data['Type'] == '계획'])
-            if plan_count > 0:
-                trace.opacity = 0.4
+            for _, row in task_data.iterrows():
+                category = row['Category']
+                color = category_colors.get(category, '#808080')
                 
-        # 실제 진행 데이터를 다시 추가 (진한 색상으로)
-        actual_data = gantt_df[gantt_df['Type'] == '실제']
-        if len(actual_data) > 0:
-            for category in actual_data['Category'].unique():
-                cat_data = actual_data[actual_data['Category'] == category]
+                # 시간 길이 계산 (일 단위)
+                duration = (row['End'] - row['Start']).total_seconds() / (24 * 3600)
+                
+                # 투명도 설정
+                opacity = 0.4 if row['Type'] == '계획' else 1.0
+                
+                # 범례 표시 여부 (각 카테고리의 첫 번째만)
+                show_legend = False
+                if row['Type'] == '계획':  # 계획만 범례에 표시
+                    existing_categories = [trace.name for trace in fig.data if trace.name]
+                    if category not in existing_categories:
+                        show_legend = True
+                
                 fig.add_trace(go.Bar(
-                    name=f"{category} (실제)",
-                    x=cat_data['End'] - cat_data['Start'],
-                    y=cat_data['Task'],
-                    base=cat_data['Start'],
+                    name=category if show_legend else None,
+                    x=[duration],
+                    y=[task],
+                    base=[row['Start']],
                     orientation='h',
-                    marker_color=category_colors.get(category, '#808080'),
-                    opacity=1.0,
-                    showlegend=False
+                    marker=dict(
+                        color=color,
+                        opacity=opacity,
+                        line=dict(width=1 if row['Type'] == '계획' else 2, 
+                                 color='white' if row['Type'] == '계획' else 'darkgray')
+                    ),
+                    showlegend=show_legend,
+                    legendgroup=category,
+                    hovertemplate=f'<b>{task}</b><br>' +
+                                 f'카테고리: {category}<br>' +
+                                 f'유형: {row["Type"]}<br>' +
+                                 f'시작: {row["Start"].strftime("%Y-%m-%d")}<br>' +
+                                 f'종료: {row["End"].strftime("%Y-%m-%d")}<br>' +
+                                 '<extra></extra>'
                 ))
 
         # 차트 레이아웃 조정
