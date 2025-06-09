@@ -1,15 +1,8 @@
 streamlit
 matplotlib
-PCA
 plotly
 openpyxl
 xlsxwriter
 pandas
-
-# 필요한 라이브러리 설치
-# pip install matplotlib
-# pip install pandas
-# pip install openpyxl
-# pip install plotly
-# pip install streamlit
-# pip install xlsxwriter
+numpy
+scikit-learn

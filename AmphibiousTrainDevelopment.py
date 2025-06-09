@@ -31,9 +31,6 @@ def display_amphibious_train_project():
         9. 예산 및 예상 소요 시간
         """)
 
-
-
-
     with tab2:
         st.header("1. 프로젝트 목표")
         st.markdown("""
@@ -63,9 +60,6 @@ def display_amphibious_train_project():
             - 다양한 상용화 모델(관광용, 통근용, 재난 구조용 등)을 개발하여 다목적 활용 가능성을 극대화한다.
         """)
 
-
-
-
     with tab3:
         st.header("2. 핵심 기술 요소")
 
@@ -83,11 +77,31 @@ def display_amphibious_train_project():
             - 부력 센서를 통해 물속에서의 자세를 지속적으로 모니터링하고, 균형을 유지하도록 실시간 조정.
         """)
 
-
-
-
-
     with tab4:
+        st.header("3. 단계별 개발 계획")
+        st.markdown("""
+        ### 1단계: 기초 연구 및 프로토타입 (1-2년)
+        - 수륙 양용 기술의 기초 연구 및 설계
+        - 소규모 프로토타입 제작 및 기본 성능 테스트
+        - 핵심 기술 특허 출원 및 지적재산권 확보
+
+        ### 2단계: 실용화 연구 및 테스트 (3-5년)
+        - 실제 크기의 프로토타입 제작
+        - 육상 및 수상 환경에서의 광범위한 테스트
+        - 안전성 및 효율성 검증
+
+        ### 3단계: 상업화 준비 (6-8년)
+        - 대량 생산 체계 구축
+        - 법적 승인 및 인증 획득
+        - 파일럿 노선 운영
+
+        ### 4단계: 상업 운영 시작 (9-10년)
+        - 정식 상업 운영 개시
+        - 운영 데이터 수집 및 최적화
+        - 추가 노선 확장
+        """)
+
+    with tab5:
         st.header("4. 예상 경로 및 활용")
 
         st.markdown("""
@@ -114,11 +128,7 @@ def display_amphibious_train_project():
                 - 의료 장비와 긴급 물자 수송을 위한 특수 장비 장착 가능.
         """)
 
-
-
-
-
-    with tab5:
+    with tab6:
         st.header("5. 주요 기술적 도전과 해결 방안")
         st.markdown("""
         | **도전 과제**        | **해결 방안**                              |
@@ -140,11 +150,7 @@ def display_amphibious_train_project():
         |                      | - 수중 생태계를 보호하기 위해 생물학적 영향을 분석하고 최소화 설계 적용. |
         """)
 
-
-
-
-
-    with tab6:
+    with tab7:
         st.header("6. 유지보수 및 정비 계획")
 
         st.markdown("""
@@ -179,11 +185,7 @@ def display_amphibious_train_project():
             - 정비 이력을 디지털화하여 차량별 맞춤형 점검 계획 수립.
         """)
 
-
-
-
-
-    with tab7:
+    with tab8:
         st.header("7. 법적/규제 준수 사항")
 
         st.markdown("""
@@ -229,11 +231,7 @@ def display_amphibious_train_project():
             - 차량 설계, 전환 메커니즘, 친환경 기술 등 고유 기술에 대한 국제 특허 출원.
         """)
 
-
-
-
-
-    with tab8:
+    with tab9:
         st.header("8. 운영 최적화")
 
         st.markdown("""
@@ -259,16 +257,9 @@ def display_amphibious_train_project():
                 - 피크 타임(관광 성수기, 출퇴근 시간) 대비 증편 계획.
                 - 화물 및 여객 혼합 운송 시 최적 배분 전략 설계.
             - IoT 센서와 빅데이터 분석을 통해 실시간 예약, 탑승, 적재 정보를 수집하고 예측 모델에 반영.
-        """)
 
+        ### 9. 예산 및 예상 소요 시간
 
-
-
-
-    with tab9:
-        st.header("9. 예산 및 예상 소요 시간")
-
-        st.markdown("""
         1. **연구 및 초기 설계**:
             - **예산**: 3억 달러.
             - **소요 시간**: 2년.
@@ -299,11 +290,6 @@ def display_amphibious_train_project():
             - 상업 운행 시작 후 5년 내 투자 회수 가능성 평가.
             - 관광 산업, 물류 운송, 군사/재난 활용을 통해 연간 5억 달러 이상의 경제적 효과 예상.
         """)
-
-
-
-
-
 
 
 if __name__ == "__main__":
