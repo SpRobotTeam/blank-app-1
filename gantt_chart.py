@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from io import BytesIO
 from datetime import datetime, timedelta, date
+import os
 
 def gantt_chart():
     """
@@ -43,8 +44,9 @@ def gantt_chart():
         if 'Progress' not in df.columns:
             df['Progress'] = 0  # 진행률이 없는 경우 기본값 0으로 설정
 
-        # 작업 종류 구분: Task에서 '_' 앞쪽을 추출
-        df['Category'] = df['Task'].apply(lambda x: x.split('_')[0] if '_' in x else 'Unknown')
+        # 작업 종류 구분: Category 열이 없는 경우 Task에서 '_' 앞쪽을 추출
+        if 'Category' not in df.columns:
+            df['Category'] = df['Task'].apply(lambda x: x.split('_')[0] if '_' in x else 'Unknown')
 
         # 사용자 설정 옵션
         st.sidebar.header("설정 옵션")
@@ -419,20 +421,71 @@ def gantt_chart():
         #### 선택 열:
         - **Progress**: 작업 진행률 (0-100 사이의 숫자)
         - **Actual_Start**: 실제 시작 날짜 (YYYY-MM-DD 형식)
-        
-        #### 작업 분류 팁:
-        - 작업명을 `카테고리_작업명` 형식으로 입력하면 동일한 카테고리의 작업이 같은 색으로 표시됩니다.
+        - **Category**: 작업 카테고리 (없으면 Task에서 '_'로 자동 추출)
         """)
         
         # 샘플 데이터 표시
         st.markdown("""
         #### 샘플 데이터:
-        ```
-        | Task              | Start      | End        | Progress | Actual_Start |
-        |-------------------|------------|------------|----------|--------------|
-        | 기획_요구사항 분석   | 2025-01-01 | 2025-01-15 | 100      | 2025-01-02   |
-        | 기획_프로젝트 범위   | 2025-01-10 | 2025-01-20 | 80       | 2025-01-11   |
-        | 설계_시스템 설계    | 2025-01-18 | 2025-02-05 | 60       | 2025-01-20   |
-        | 개발_백엔드 구현    | 2025-02-01 | 2025-03-01 | 30       |              |
-        ```
+        
+        | Task | Start | End | Progress | Actual_Start | Category |
+        |------|-------|-----|----------|--------------|----------|
+        | 기획_요구사항 분석 | 2025-01-01 | 2025-01-15 | 100 | 2025-01-02 | 기획 |
+        | 기획_프로젝트 범위 | 2025-01-10 | 2025-01-20 | 80 | 2025-01-11 | 기획 |
+        | 설계_시스템 설계 | 2025-01-18 | 2025-02-05 | 60 | 2025-01-20 | 설계 |
+        | 개발_백엔드 구현 | 2025-02-01 | 2025-03-01 | 30 |  | 개발 |
         """)
+        
+        # 템플릿 다운로드 옵션 제공
+        st.markdown("### 템플릿 다운로드")
+        
+        # 템플릿 데이터 생성
+        template_data = {
+            'Task': ['기획_요구사항 분석', '기획_프로젝트 범위', '설계_시스템 설계', '개발_백엔드 구현'],
+            'Start': ['2025-01-01', '2025-01-10', '2025-01-18', '2025-02-01'],
+            'End': ['2025-01-15', '2025-01-20', '2025-02-05', '2025-03-01'],
+            'Progress': [100, 80, 60, 30],
+            'Actual_Start': ['2025-01-02', '2025-01-11', '2025-01-20', ''],
+            'Category': ['기획', '기획', '설계', '개발']
+        }
+        
+        template_df = pd.DataFrame(template_data)
+        
+        # Excel로 템플릿 변환
+        buffer = BytesIO()
+        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            template_df.to_excel(writer, index=False, sheet_name='Gantt Chart Template')
+            
+            # 워크시트 서식 지정
+            workbook = writer.book
+            worksheet = writer.sheets['Gantt Chart Template']
+            
+            # 헤더 서식
+            header_format = workbook.add_format({
+                'bold': True,
+                'text_wrap': True,
+                'valign': 'top',
+                'fg_color': '#D7E4BC',
+                'border': 1
+            })
+            
+            # 헤더 적용
+            for col_num, value in enumerate(template_df.columns.values):
+                worksheet.write(0, col_num, value, header_format)
+                
+            # 열 너비 조정
+            worksheet.set_column('A:A', 25)  # Task
+            worksheet.set_column('B:C', 12)  # Start, End
+            worksheet.set_column('D:D', 10)  # Progress
+            worksheet.set_column('E:E', 12)  # Actual_Start
+            worksheet.set_column('F:F', 15)  # Category
+        
+        buffer.seek(0)
+        
+        st.download_button(
+            label="간트 차트 템플릿 다운로드",
+            data=buffer,
+            file_name='gantt_chart_template.xlsx',
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            help="간트 차트 기능을 사용하기 위한 기본 템플릿을 다운로드합니다."
+        )
