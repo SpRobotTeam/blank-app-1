@@ -223,101 +223,71 @@ def gantt_chart():
         if category not in category_colors:
             category_colors[category] = f"#{''.join([random.choice('0123456789ABCDEF') for _ in range(6)])}"
     
-    # go.Scatter를 사용한 간트 차트 생성
-    fig = go.Figure()
+    # 기존 방식: px.timeline으로 계획 일정 생성 (연한색)
+    fig = px.timeline(
+        sorted_df,
+        x_start="Start",
+        x_end="End",
+        y="Task",
+        color="Category",
+        color_discrete_map=category_colors,
+        title='프로젝트 진행 간트 차트',
+        labels={'Task': '작업', 'Start': '시작 날짜', 'End': '종료 날짜', 'Category': '카테고리'}
+    )
     
-    # 작업별 Y 위치 설정
-    tasks = sorted_df['Task'].tolist()
-    task_positions = {task: i for i, task in enumerate(tasks)}
+    # 계획 일정을 연하게 만들기 (투명도 조정)
+    fig.update_traces(opacity=0.4)
     
-    # 각 작업에 대해 계획과 실제 막대 생성
-    for idx, row in sorted_df.iterrows():
-        task_name = row['Task']
-        category = row['Category']
-        color = category_colors.get(category, '#808080')
-        y_pos = task_positions[task_name]
-        
-        # 계획 일정 막대 (연한색)
-        fig.add_trace(go.Scatter(
-            x=[row['Start'], row['Start'], row['End'], row['End'], row['Start']],
-            y=[y_pos - 0.3, y_pos + 0.3, y_pos + 0.3, y_pos - 0.3, y_pos - 0.3],
-            fill='toself',
-            fillcolor=color + '66',  # 40% 투명도
-            line=dict(color=color, width=1),
-            mode='lines',
-            name=category if category not in [trace.name for trace in fig.data] else "",
-            showlegend=category not in [trace.name for trace in fig.data],
-            legendgroup=category,
-            hovertemplate=f'<b>{task_name}</b><br>' +
-                         f'카테고리: {category}<br>' +
-                         f'유형: 계획<br>' +
-                         f'시작: {row["Start"].strftime("%Y-%m-%d")}<br>' +
-                         f'종료: {row["End"].strftime("%Y-%m-%d")}<br>' +
-                         '<extra></extra>'
-        ))
-        
-        # 실제 진행 막대 (진한색)
-        if pd.notna(row['Actual_Start']) and row['Progress'] > 0:
-            # 진행률에 따른 종료 시점 계산
-            actual_duration = (row['End'] - row['Start']).total_seconds() * (row['Progress'] / 100)
-            actual_end = row['Actual_Start'] + timedelta(seconds=actual_duration)
-            
-            fig.add_trace(go.Scatter(
-                x=[row['Actual_Start'], row['Actual_Start'], actual_end, actual_end, row['Actual_Start']],
-                y=[y_pos - 0.25, y_pos + 0.25, y_pos + 0.25, y_pos - 0.25, y_pos - 0.25],
-                fill='toself',
-                fillcolor=color,  # 100% 불투명
-                line=dict(color='darkgray', width=2),
-                mode='lines',
-                name="",
-                showlegend=False,
-                legendgroup=category,
-                hovertemplate=f'<b>{task_name}</b><br>' +
-                             f'카테고리: {category}<br>' +
-                             f'유형: 실제<br>' +
-                             f'시작: {row["Actual_Start"].strftime("%Y-%m-%d")}<br>' +
-                             f'종료: {actual_end.strftime("%Y-%m-%d")}<br>' +
-                             f'진행률: {row["Progress"]}%<br>' +
-                             '<extra></extra>'
-            ))
-
-    # 차트 레이아웃 설정
+    # 차트 레이아웃 조정
     fig.update_layout(
-        title={
-            'text': '프로젝트 진행 간트 차트',
-            'font': {'size': 20},
-            'x': 0.5
-        },
-        xaxis=dict(
-            type='date',
-            tickformat='%Y-%m-%d',
-            showgrid=True,
-            gridcolor='lightgray',
-            title='날짜'
-        ),
         yaxis=dict(
-            tickmode='array',
-            tickvals=list(range(len(tasks))),
-            ticktext=tasks,
-            autorange='reversed',
+            autorange='reversed',  # Task가 위에서 아래로 나열되도록 설정
             showgrid=True,
-            gridcolor='lightgray',
-            title='작업',
-            fixedrange=True
+            gridcolor="lightgrey",
+            gridwidth=0.5
         ),
-        height=max(400, len(tasks) * 40 + 150),
-        showlegend=True,
+        xaxis=dict(
+            type="date", 
+            tickformat="%Y-%m-%d", 
+            showline=True, 
+            linecolor="lightgrey", 
+            showgrid=True,
+            gridcolor="lightgrey",
+            gridwidth=0.5
+        ),
+        title=dict(font=dict(size=20)),
+        font=dict(size=12),
+        bargap=0.3,
+        height=max(400, len(sorted_df) * 40 + 200),
         legend=dict(
             orientation="h",
             yanchor="bottom",
             y=1.02,
             xanchor="right",
             x=1
-        ),
-        margin=dict(l=50, r=50, t=100, b=50),
-        font=dict(size=10)
+        )
     )
-    
+
+    # 실제 진행 상황 추가 (기존 방식 활용 - add_shape 사용)
+    for i, row in sorted_df.iterrows():
+        if pd.notna(row.get('Actual_Start')) and row['Progress'] > 0:
+            # 진행률에 따른 종료 시점 계산
+            actual_duration = (row['End'] - row['Start']).total_seconds() * (row['Progress'] / 100)
+            actual_end = row['Actual_Start'] + timedelta(seconds=actual_duration)
+            
+            # 실제 진행 막대 추가 (진한색)
+            fig.add_shape(
+                type='rect',
+                x0=row['Actual_Start'],
+                x1=actual_end,
+                y0=i - 0.35,  # 계획 막대보다 약간 작게
+                y1=i + 0.35,
+                fillcolor=category_colors.get(row['Category'], '#808080'),
+                opacity=1.0,  # 진한색
+                line=dict(width=1, color='darkgray'),
+                layer="above"
+            )
+
     # 범례에 계획/실제 구분 설명 추가
     fig.add_annotation(
         text="■ 연한색: 계획 일정 | ■ 진한색: 실제 진행",
@@ -334,8 +304,9 @@ def gantt_chart():
         type="line",
         x0=marker_datetime,
         x1=marker_datetime,
-        y0=-0.5,
-        y1=len(tasks) - 0.5,
+        y0=0,
+        y1=1,
+        yref="paper",
         line=dict(
             color="red",
             width=3,
@@ -344,13 +315,13 @@ def gantt_chart():
     )
     fig.add_annotation(
         x=marker_datetime,
-        y=-0.5,
+        y=1,
+        yref="paper",
         text=f"기준 날짜: {marker_date.strftime('%Y-%m-%d')}",
         showarrow=True,
         arrowhead=1,
         ax=50,
-        ay=-30,
-        font=dict(color="red", size=10)
+        ay=-30
     )
 
     # Streamlit 그래프 출력
