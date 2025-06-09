@@ -203,7 +203,7 @@ def gantt_chart():
         # 프로젝트 상태 분석 (시작 일정과 진행률 기반)
         st.subheader("프로젝트 상태 분석")
         
-        # 현재 날짜 기준 진행 상황 분석
+        # 현재 날짜 기준 진행 상황 분석 - Timestamp로 변환
         today_date = pd.Timestamp(marker_date)
         
         # 작업 상태 분류
@@ -216,11 +216,11 @@ def gantt_chart():
             # 진행 중인 작업
             elif row['Progress'] > 0:
                 sorted_df.at[i, 'Status'] = '진행 중'
-            # 시작 예정 작업
-            elif today_date < row['Start']:
+            # 시작 예정 작업 - 날짜 비교 수정
+            elif today_date.date() < row['Start'].date():
                 sorted_df.at[i, 'Status'] = '예정'
             # 지연 시작 작업
-            elif today_date >= row['Start'] and row['Progress'] == 0:
+            elif today_date.date() >= row['Start'].date() and row['Progress'] == 0:
                 sorted_df.at[i, 'Status'] = '지연'
         
         # 작업 상태별 색상 정의
@@ -236,10 +236,10 @@ def gantt_chart():
         
         for i, row in sorted_df.iterrows():
             # 이미 끝난 작업은 100%
-            if today_date > row['End']:
+            if today_date.date() > row['End'].date():
                 sorted_df.at[i, 'Expected_Progress'] = 100.0
             # 아직 시작 안한 작업은 0%
-            elif today_date < row['Start']:
+            elif today_date.date() < row['Start'].date():
                 sorted_df.at[i, 'Expected_Progress'] = 0.0
             # 진행 중인 작업은 비율 계산
             else:
@@ -287,7 +287,7 @@ def gantt_chart():
         with col2:
             st.metric("실제 진행률", f"{actual_progress:.1f}%")
         with col3:
-            st.metric("진행률 차이", f"{progress_diff:+.1f}%", delta_color=progress_color)
+            st.metric("진행률 차이", f"{progress_diff:+.1f}%", delta_color="normal" if progress_diff >= 0 else "inverse")
         
         # 작업 상태별 시각화
         st.subheader("작업 상태 분포")
