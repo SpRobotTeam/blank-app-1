@@ -98,9 +98,17 @@ def gantt_chart():
         unique_categories = sorted_df['Category'].unique()
         color_map = {cat: f"#{''.join([random.choice('0123456789ABCDEF') for _ in range(6)])}" for cat in unique_categories}
 
-        # 간트 차트 생성 (계획 일정)
+        # 실제 시작일을 이용한 프로젝트 데이터 가공
+        display_df = sorted_df.copy()
+        
+        # 실제 시작일이 있으면 실제 시작일 사용, 없으면 계획 시작일 사용
+        for i, row in display_df.iterrows():
+            if pd.notna(row['Actual_Start']):
+                display_df.at[i, 'Start'] = row['Actual_Start']
+        
+        # 실제 시작일을 적용한 간트 차트 생성
         fig = px.timeline(
-            sorted_df, 
+            display_df, 
             x_start="Start", 
             x_end="End", 
             y="Task", 
@@ -155,6 +163,7 @@ def gantt_chart():
             # 시작점 설정 (실제 시작일이 있으면 실제 시작일, 없으면 계획 시작일)
             start_point = row['Actual_Start'] if pd.notna(row['Actual_Start']) else row['Start']
             
+            # 간트 차트에 실제 시작일 기준 진행률 표시
             fig.add_shape(
                 type='rect',
                 x0=start_point,
