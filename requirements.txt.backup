@@ -3,8 +3,7 @@ matplotlib
 PCA
 plotly
 openpyxl
-xlsxwriter
-pandas
+
 
 # 필요한 라이브러리 설치
 # pip install matplotlib
