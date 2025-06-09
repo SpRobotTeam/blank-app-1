@@ -221,13 +221,12 @@ def gantt_chart():
     
     # 계획 일정 데이터 추가
     for idx, row in sorted_df.iterrows():
-        # 계획 일정 - 더 투명하게
+        # 계획 일정
         gantt_data.append({
-            'Task': row['Task'],
+            'Task': f"{row['Task']} (계획)",
             'Start': row['Start'],
             'End': row['End'],
             'Category': row['Category'],
-            'Color': category_colors.get(row['Category'], '#808080') + '80',  # 50% 투명도 추가
             'Type': '계획'
         })
         
@@ -238,11 +237,10 @@ def gantt_chart():
             actual_end = row['Actual_Start'] + timedelta(seconds=actual_duration)
             
             gantt_data.append({
-                'Task': row['Task'],
+                'Task': f"{row['Task']} (실제)",
                 'Start': row['Actual_Start'],
                 'End': actual_end,
                 'Category': row['Category'],
-                'Color': category_colors.get(row['Category'], '#808080'),  # 진하게
                 'Type': '실제'
             })
     
@@ -261,14 +259,16 @@ def gantt_chart():
         labels={'Task': '작업', 'Start': '시작 날짜', 'End': '종료 날짜', 'Category': '카테고리'}
     )
     
-    # 각 데이터 포인트의 막대에 색상 지정 (type에 따라 투명도 조절)
-    for i, d in enumerate(fig.data):
-        fig.data[i].marker.color = gantt_df[gantt_df['Category'] == d.name]['Color'].tolist()
-        # 일정 유형에 따라 선 두께 조절
-        if '실제' in gantt_df[gantt_df['Category'] == d.name]['Type'].values:
-            fig.data[i].marker.line.width = 2  # 실제 일정은 두께 있게
+    # 투명도 적용 - 계획 일정은 투명하게
+    for i, trace in enumerate(fig.data):
+        # trace.name이 카테고리 이름
+        category_data = gantt_df[gantt_df['Category'] == trace.name]
+        
+        # 계획 일정인 경우 투명도 적용
+        if '계획' in ' '.join(category_data['Type'].values):
+            trace.opacity = 0.5
         else:
-            fig.data[i].marker.line.width = 0  # 계획 일정은 두께 없이
+            trace.opacity = 1.0
 
     # 차트 레이아웃 조정 (가로 및 세로 격자 추가)
     fig.update_layout(
@@ -324,23 +324,6 @@ def gantt_chart():
         ax=50,
         ay=-30
     )
-
-    # 일정 유형 설명을 위한 범례만 추가 (투명도 설명)
-    fig.add_trace(go.Scatter(
-        x=[None], y=[None],
-        mode='lines',
-        line=dict(color='#888888', width=10, dash='solid'),
-        name='계획 일정 (투명)',
-        showlegend=True
-    ))
-    
-    fig.add_trace(go.Scatter(
-        x=[None], y=[None],
-        mode='lines',
-        line=dict(color='#444444', width=10, dash='solid'),
-        name='실제 진행 (진한 색상)',
-        showlegend=True
-    ))
 
     # Streamlit 그래프 출력
     st.plotly_chart(fig, use_container_width=True)
@@ -559,4 +542,11 @@ def gantt_chart():
         3. **파일 저장**:
            - '엑셀로 내보내기' 버튼을 클릭하여 현재 작업 상태를 저장할 수 있습니다.
            - 저장된 파일은 다음에 업로드하여 계속 진행 상황을 업데이트할 수 있습니다.
+        
+        ### 간트 차트 읽는 방법
+        
+        - **투명한 막대**: 계획된 일정
+        - **진한 막대**: 실제 진행 상황
+        - **빨간 점선**: 오늘 날짜 (또는 선택한 기준 날짜)
+        - **색상**: 작업 카테고리별로 구분
         """)
