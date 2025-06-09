@@ -223,171 +223,138 @@ def gantt_chart():
         if category not in category_colors:
             category_colors[category] = f"#{''.join([random.choice('0123456789ABCDEF') for _ in range(6)])}"
     
-    # 간트 차트용 데이터 준비 - px.timeline 사용을 위해 단순화
-    gantt_data = []
+    # go.Scatter를 사용한 간트 차트 생성
+    fig = go.Figure()
     
-    # 계획 일정 데이터 추가
+    # 작업별 Y 위치 설정
+    tasks = sorted_df['Task'].tolist()
+    task_positions = {task: i for i, task in enumerate(tasks)}
+    
+    # 각 작업에 대해 계획과 실제 막대 생성
     for idx, row in sorted_df.iterrows():
         task_name = row['Task']
         category = row['Category']
+        color = category_colors.get(category, '#808080')
+        y_pos = task_positions[task_name]
         
-        # 계획 일정 추가
-        gantt_data.append({
-            'Task': task_name + " (계획)",
-            'Start': row['Start'],
-            'End': row['End'],
-            'Category': category,
-            'Type': '계획',
-            'Resource': task_name
-        })
+        # 계획 일정 막대 (연한색)
+        fig.add_trace(go.Scatter(
+            x=[row['Start'], row['Start'], row['End'], row['End'], row['Start']],
+            y=[y_pos - 0.3, y_pos + 0.3, y_pos + 0.3, y_pos - 0.3, y_pos - 0.3],
+            fill='toself',
+            fillcolor=color + '66',  # 40% 투명도
+            line=dict(color=color, width=1),
+            mode='lines',
+            name=category if category not in [trace.name for trace in fig.data] else "",
+            showlegend=category not in [trace.name for trace in fig.data],
+            legendgroup=category,
+            hovertemplate=f'<b>{task_name}</b><br>' +
+                         f'카테고리: {category}<br>' +
+                         f'유형: 계획<br>' +
+                         f'시작: {row["Start"].strftime("%Y-%m-%d")}<br>' +
+                         f'종료: {row["End"].strftime("%Y-%m-%d")}<br>' +
+                         '<extra></extra>'
+        ))
         
-        # 실제 시작일이 있으면 실제 일정도 추가
+        # 실제 진행 막대 (진한색)
         if pd.notna(row['Actual_Start']) and row['Progress'] > 0:
             # 진행률에 따른 종료 시점 계산
             actual_duration = (row['End'] - row['Start']).total_seconds() * (row['Progress'] / 100)
             actual_end = row['Actual_Start'] + timedelta(seconds=actual_duration)
             
-            gantt_data.append({
-                'Task': task_name + " (실제)",
-                'Start': row['Actual_Start'],
-                'End': actual_end,
-                'Category': category,
-                'Type': '실제',
-                'Resource': task_name
-            })
+            fig.add_trace(go.Scatter(
+                x=[row['Actual_Start'], row['Actual_Start'], actual_end, actual_end, row['Actual_Start']],
+                y=[y_pos - 0.25, y_pos + 0.25, y_pos + 0.25, y_pos - 0.25, y_pos - 0.25],
+                fill='toself',
+                fillcolor=color,  # 100% 불투명
+                line=dict(color='darkgray', width=2),
+                mode='lines',
+                name="",
+                showlegend=False,
+                legendgroup=category,
+                hovertemplate=f'<b>{task_name}</b><br>' +
+                             f'카테고리: {category}<br>' +
+                             f'유형: 실제<br>' +
+                             f'시작: {row["Actual_Start"].strftime("%Y-%m-%d")}<br>' +
+                             f'종료: {actual_end.strftime("%Y-%m-%d")}<br>' +
+                             f'진행률: {row["Progress"]}%<br>' +
+                             '<extra></extra>'
+            ))
+
+    # 차트 레이아웃 설정
+    fig.update_layout(
+        title={
+            'text': '프로젝트 진행 간트 차트',
+            'font': {'size': 20},
+            'x': 0.5
+        },
+        xaxis=dict(
+            type='date',
+            tickformat='%Y-%m-%d',
+            showgrid=True,
+            gridcolor='lightgray',
+            title='날짜'
+        ),
+        yaxis=dict(
+            tickmode='array',
+            tickvals=list(range(len(tasks))),
+            ticktext=tasks,
+            autorange='reversed',
+            showgrid=True,
+            gridcolor='lightgray',
+            title='작업',
+            fixedrange=True
+        ),
+        height=max(400, len(tasks) * 40 + 150),
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        margin=dict(l=50, r=50, t=100, b=50),
+        font=dict(size=10)
+    )
     
-    # 간트 차트를 위한 DataFrame 생성
-    gantt_df = pd.DataFrame(gantt_data)
-    
-    if len(gantt_df) > 0:
-        # px.timeline을 사용해서 간트 차트 생성
-        fig = px.timeline(
-            gantt_df,
-            x_start="Start",
-            x_end="End",
-            y="Resource",  # 작업명으로 그룹핑
-            color="Category",
-            color_discrete_map=category_colors,
-            title="프로젝트 진행 간트 차트",
-            hover_data=["Type"]
-        )
-        
-        # 각 trace의 투명도 조정
-        for i, trace in enumerate(fig.data):
-            # trace 이름(카테고리)으로 해당 데이터 찾기
-            category_name = trace.name
-            category_data = gantt_df[gantt_df['Category'] == category_name]
-            
-            # 계획 데이터가 포함된 카테고리인 경우 투명도 조정
-            if '계획' in ' '.join(category_data['Type'].values):
-                # 모든 막대를 투명하게 설정
-                trace.opacity = 0.4
-        
-        # 실제 진행 막대를 별도로 추가 (진한 색상)
-        actual_data = gantt_df[gantt_df['Type'] == '실제']
-        if len(actual_data) > 0:
-            for category in actual_data['Category'].unique():
-                cat_actual = actual_data[actual_data['Category'] == category]
-                
-                # 실제 진행 막대 추가
-                for _, row in cat_actual.iterrows():
-                    fig.add_trace(go.Bar(
-                        name=f"{category} (실제)" if category not in [t.name for t in fig.data] else "",
-                        x=[row['End'] - row['Start']],
-                        y=[row['Resource']],
-                        base=[row['Start']],
-                        orientation='h',
-                        marker=dict(
-                            color=category_colors.get(category, '#808080'),
-                            opacity=1.0,
-                            line=dict(width=1, color='darkgray')
-                        ),
-                        showlegend=False,
-                        hovertemplate=f"<b>{row['Resource']}</b><br>" +
-                                     f"카테고리: {category}<br>" +
-                                     f"유형: 실제<br>" +
-                                     f"시작: {row['Start'].strftime('%Y-%m-%d')}<br>" +
-                                     f"종료: {row['End'].strftime('%Y-%m-%d')}<br>" +
-                                     "<extra></extra>"
-                    ))
+    # 범례에 계획/실제 구분 설명 추가
+    fig.add_annotation(
+        text="■ 연한색: 계획 일정 | ■ 진한색: 실제 진행",
+        xref="paper", yref="paper",
+        x=0, y=1.15,
+        showarrow=False,
+        font=dict(size=11, color="gray"),
+        align="left"
+    )
 
-        # 차트 레이아웃 조정
-        fig.update_layout(
-            title={
-                'text': '프로젝트 진행 간트 차트',
-                'font': {'size': 20},
-                'x': 0.5
-            },
-            xaxis=dict(
-                type="date", 
-                tickformat="%Y-%m-%d", 
-                showline=True, 
-                linecolor="lightgrey", 
-                showgrid=True,
-                gridcolor="lightgrey",
-                gridwidth=0.5,
-                title="날짜"
-            ),
-            yaxis=dict(
-                autorange='reversed',
-                showgrid=True,
-                gridcolor="lightgrey",
-                gridwidth=0.5,
-                title="작업"
-            ),
-            font=dict(size=12),
-            bargap=0.2,
-            height=max(400, len(sorted_df) * 60 + 200),
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1
-            ),
-            margin=dict(l=50, r=50, t=100, b=50)
+    # 특정 날짜 마커 추가 (오늘 또는 선택한 날짜)
+    marker_datetime = datetime.combine(marker_date, datetime.min.time())
+    fig.add_shape(
+        type="line",
+        x0=marker_datetime,
+        x1=marker_datetime,
+        y0=-0.5,
+        y1=len(tasks) - 0.5,
+        line=dict(
+            color="red",
+            width=3,
+            dash="dot"
         )
-        
-        # 범례에 계획/실제 구분 설명 추가
-        fig.add_annotation(
-            text="■ 연한색: 계획 일정 | ■ 진한색: 실제 진행",
-            xref="paper", yref="paper",
-            x=0, y=1.15,
-            showarrow=False,
-            font=dict(size=11, color="gray"),
-            align="left"
-        )
+    )
+    fig.add_annotation(
+        x=marker_datetime,
+        y=-0.5,
+        text=f"기준 날짜: {marker_date.strftime('%Y-%m-%d')}",
+        showarrow=True,
+        arrowhead=1,
+        ax=50,
+        ay=-30,
+        font=dict(color="red", size=10)
+    )
 
-        # 특정 날짜 마커 추가 (오늘 또는 선택한 날짜)
-        marker_datetime = datetime.combine(marker_date, datetime.min.time())
-        fig.add_shape(
-            type="line",
-            x0=marker_datetime,
-            x1=marker_datetime,
-            y0=0,
-            y1=1,
-            yref="paper",
-            line=dict(
-                color="red",
-                width=3,
-                dash="dot"
-            )
-        )
-        fig.add_annotation(
-            x=marker_datetime,
-            y=1,
-            yref="paper",
-            text=f"기준 날짜: {marker_date.strftime('%Y-%m-%d')}",
-            showarrow=True,
-            arrowhead=1,
-            ax=50,
-            ay=-30
-        )
-
-        # Streamlit 그래프 출력
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.error("간트 차트 데이터가 없습니다.")
+    # Streamlit 그래프 출력
+    st.plotly_chart(fig, use_container_width=True)
 
     # 프로젝트 상태 분석 (시작 일정과 진행률 기반)
     st.subheader("프로젝트 상태 분석")
