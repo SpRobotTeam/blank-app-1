@@ -201,13 +201,6 @@ def gantt_chart():
     # 정렬 기준에 따라 데이터프레임 정렬
     sorted_df = df.sort_values(by=order_by)
 
-    # 랜덤 색상 생성 (카테고리별)
-    unique_categories = sorted_df['Category'].unique()
-    color_map = {cat: f"#{''.join([random.choice('0123456789ABCDEF') for _ in range(6)])}" for cat in unique_categories}
-
-    # 간트 차트용 데이터 준비 - 계획과 실제 일정을 모두 표시하기 위해 데이터 가공
-    gantt_data = []
-    
     # 카테고리별 색상 지정 (고정 색상 사용)
     category_colors = {
         '기획': '#4e73df',  # 파란색
@@ -222,6 +215,9 @@ def gantt_chart():
     for category in sorted_df['Category'].unique():
         if category not in category_colors:
             category_colors[category] = f"#{''.join([random.choice('0123456789ABCDEF') for _ in range(6)])}"
+    
+    # 간트 차트용 데이터 준비 - 계획과 실제 일정을 모두 표시하기 위해 데이터 가공
+    gantt_data = []
     
     # 계획 일정 데이터 추가
     for idx, row in sorted_df.iterrows():
@@ -329,36 +325,22 @@ def gantt_chart():
         ay=-30
     )
 
-    # 범례 추가 - 카테고리 및 일정 유형 설명
-    # 주요 카테고리별 색상 범례 추가
-    for category, color in list(category_colors.items())[:5]:  # 주요 5개 카테고리만 표시
+    # 일정 유형 설명을 위한 범례만 추가 (투명도 설명)
     fig.add_trace(go.Scatter(
-        x=[None],
-        y=[None],
-        mode='markers',
-        marker=dict(size=10, color=color),
-            name=category,
-            showlegend=True
-        ))
-    
-    # 일정 유형 범례 추가
-    fig.add_trace(go.Scatter(
-    x=[None],
-    y=[None],
-    mode='lines',
+        x=[None], y=[None],
+        mode='lines',
         line=dict(color='#888888', width=10, dash='solid'),
-            name='계획 일정 (투명)',
-            showlegend=True
-        ))
-        
-        fig.add_trace(go.Scatter(
-            x=[None],
-            y=[None],
-            mode='lines',
-            line=dict(color='#444444', width=10, dash='solid'),
-            name='실제 진행 (진한 색상)',
-            showlegend=True
-        ))
+        name='계획 일정 (투명)',
+        showlegend=True
+    ))
+    
+    fig.add_trace(go.Scatter(
+        x=[None], y=[None],
+        mode='lines',
+        line=dict(color='#444444', width=10, dash='solid'),
+        name='실제 진행 (진한 색상)',
+        showlegend=True
+    ))
 
     # Streamlit 그래프 출력
     st.plotly_chart(fig, use_container_width=True)
