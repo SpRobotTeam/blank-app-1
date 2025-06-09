@@ -332,25 +332,40 @@ def gantt_chart():
         display_df.columns = ['작업', '카테고리', '계획 시작', '계획 종료', '실제 시작', 
                              '실제 진행률(%)', '예상 진행률(%)', '진행률 차이(%)', '상태']
         
-        # 지연 또는 앞서가는 작업 강조
-        def highlight_status(row):
-            styles = [''] * len(row)
-            if row['상태'] == '완료':
-                styles = ['background-color: #d4f7d4'] * len(row)  # 연한 녹색
-            elif row['상태'] == '지연':
-                styles = ['background-color: #ffcccb'] * len(row)  # 연한 빨간색
-            
-            # 진행률 차이에 따른 색상
-            progress_diff_idx = display_df.columns.get_loc('진행률 차이(%)')
-            if row['진행률 차이(%)'] > 5:
-                styles[progress_diff_idx] = 'color: green; font-weight: bold'
-            elif row['진행률 차이(%)'] < -5:
-                styles[progress_diff_idx] = 'color: red; font-weight: bold'
-                
-            return styles
+        # 날짜 형식 변환 (스트림릿에서 표시용)
+        display_df['계획 시작'] = display_df['계획 시작'].dt.strftime('%Y-%m-%d')
+        display_df['계획 종료'] = display_df['계획 종료'].dt.strftime('%Y-%m-%d')
+        display_df['실제 시작'] = display_df['실제 시작'].apply(lambda x: x.strftime('%Y-%m-%d') if pd.notna(x) else '')
         
-        # 스타일이 적용된 DataFrame 표시
-        st.dataframe(display_df.style.apply(highlight_status, axis=1))
+        # 스타일링 대신 색상으로 상태 구분
+        st.write("색상 코드: 🟩 완료  🟦 진행 중  ⬜ 예정  🟥 지연")
+        
+        # 상태에 따라 이모지 추가
+        def add_status_emoji(status):
+            if status == '완료':
+                return '🟩 완료'
+            elif status == '진행 중':
+                return '🟦 진행 중'
+            elif status == '예정':
+                return '⬜ 예정'
+            elif status == '지연':
+                return '🟥 지연'
+            return status
+        
+        display_df['상태'] = display_df['상태'].apply(add_status_emoji)
+        
+        # 진행률 차이 표시 개선
+        def format_progress_diff(diff):
+            if diff > 0:
+                return f"✅ +{diff:.1f}%"
+            elif diff < 0:
+                return f"⚠️ {diff:.1f}%"
+            return f"{diff:.1f}%"
+            
+        display_df['진행률 차이(%)'] = display_df['진행률 차이(%)'].apply(format_progress_diff)
+        
+        # 데이터프레임 표시
+        st.dataframe(display_df, use_container_width=True)
         
         # 작업을 엑셀로 내보내기
         try:
