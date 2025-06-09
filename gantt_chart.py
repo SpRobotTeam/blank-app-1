@@ -113,29 +113,6 @@ def gantt_chart():
         # 사용자 정의 색상 적용
         fig.update_traces(marker=dict(colorscale=list(color_map.values())))
 
-        # 실제 시작일 표시 방식 개선 - 별도 마커 대신 화살표로 표시
-        for i, row in sorted_df.iterrows():
-            if pd.notna(row['Actual_Start']):
-                # 화살표와 텍스트로 실제 시작일 표시
-                fig.add_annotation(
-                    x=row['Actual_Start'],
-                    y=i,
-                    text="▼ 실제 시작",
-                    showarrow=True,
-                    arrowhead=2,
-                    arrowsize=1,
-                    arrowwidth=2,
-                    arrowcolor="black",
-                    ax=0,
-                    ay=-20,
-                    font=dict(size=10, color="black"),
-                    bgcolor="rgba(255, 255, 255, 0.7)",
-                    bordercolor="black",
-                    borderwidth=1,
-                    borderpad=2,
-                    opacity=0.8
-                )
-
         fig.update_yaxes(categoryorder='array', categoryarray=sorted_df['Task'])  # 엑셀 파일의 순서를 유지
 
         # 차트 레이아웃 조정 (가로 및 세로 격자 추가)
@@ -214,7 +191,7 @@ def gantt_chart():
             ay=-30
         )
 
-        # 실제 시작일 범례 추가
+        # 범례 추가
         fig.add_trace(go.Scatter(
             x=[None],
             y=[None],
