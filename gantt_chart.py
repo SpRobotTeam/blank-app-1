@@ -10,12 +10,12 @@ import os
 def gantt_chart():
     """
     Generate a Gantt chart using uploaded Excel data. Supports filtering and downloading results.
-    Version: 2.0 - Updated for Excel order sorting and compact bars
+    Version: 2.1 - Improved layout and legend positioning
     """
     st.title("프로젝트 진행 간트 차트 📊")
     
     # 버전 정보 표시 (수정 확인용)
-    st.caption("🔄 Version 2.0 - 엑셀 순서 정렬 & 컴팩트 바 (2025.06.10)")
+    st.caption("🔄 Version 2.1 - 레이아웃 개선 & 범례 위치 최적화 (2025.06.10)")
 
     # 세션 상태 초기화
     if 'df_data' not in st.session_state:
@@ -250,20 +250,23 @@ def gantt_chart():
         y="Task",
         color="Category",
         color_discrete_map=category_colors,
-        title='📊 프로젝트 진행 간트 차트 (엑셀 입력 순서) - 컴팩트 바 적용',
+        title='📊 프로젝트 진행 간트 차트',
         labels={'Task': '작업', 'Start': '시작 날짜', 'End': '종료 날짜', 'Category': '카테고리'}
     )
     
     # 계획 일정을 연하게 만들기 (투명도 조정)
     fig.update_traces(opacity=0.4)
     
-    # ✅ 차트 레이아웃 조정 - 바 크기를 1/3으로 줄임
+    # ✅ 차트 레이아웃 조정 - 항목간 거리와 범례 위치 개선
     fig.update_layout(
         yaxis=dict(
             autorange='reversed',  # Task가 위에서 아래로 나열되도록 설정
             showgrid=True,
             gridcolor="lightgrey",
-            gridwidth=0.5
+            gridwidth=0.5,
+            # 카테고리 크기를 고정하여 확대/축소 시에도 적절한 간격 유지
+            categoryorder='array',
+            categoryarray=sorted_df['Task'].tolist()
         ),
         xaxis=dict(
             type="date", 
@@ -274,47 +277,64 @@ def gantt_chart():
             gridcolor="lightgrey",
             gridwidth=0.5
         ),
-        title=dict(font=dict(size=18)),
+        title=dict(
+            font=dict(size=18),
+            x=0.5,  # 제목을 중앙 정렬
+            xanchor='center'
+        ),
         font=dict(size=11),
-        bargap=0.7,  # ✅ 기존 0.3에서 0.7로 증가하여 바 간격 확대
-        height=max(400, len(sorted_df) * 25 + 200),  # ✅ 기존 40에서 25로 줄임
+        # ✅ 바 간격 조정 - 확대 시에도 적절한 간격 유지
+        bargap=0.4,  # 기존 0.7에서 0.4로 줄여서 항목간 거리 단축
+        # ✅ 높이를 동적으로 조정하되 최소값 설정
+        height=max(500, len(sorted_df) * 35 + 150),  # 기존 25에서 35로 증가
+        # ✅ 범례 위치 개선 - 제목과 겹치지 않도록 조정
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
+            y=-0.15,  # 차트 아래쪽으로 이동
+            xanchor="center",
+            x=0.5,
+            bgcolor="rgba(255,255,255,0.8)",  # 반투명 배경 추가
+            bordercolor="lightgrey",
+            borderwidth=1
+        ),
+        # 마진 조정으로 범례를 위한 공간 확보
+        margin=dict(
+            l=150,  # 왼쪽 여백 증가 (작업명을 위해)
+            r=50,
+            t=80,   # 위쪽 여백
+            b=100   # 아래쪽 여백 증가 (범례를 위해)
         )
     )
 
-    # ✅ 실제 진행 상황 추가 (기존 방식 활용 - add_shape 사용) - 바 크기 1/3으로 줄임
+    # ✅ 실제 진행 상황 추가 (기존 방식 활용 - add_shape 사용) - 바 크기 조정
     for i, row in sorted_df.iterrows():
         if pd.notna(row.get('Actual_Start')) and row['Progress'] > 0:
             # 진행률에 따른 종료 시점 계산
             actual_duration = (row['End'] - row['Start']).total_seconds() * (row['Progress'] / 100)
             actual_end = row['Actual_Start'] + timedelta(seconds=actual_duration)
             
-            # ✅ 실제 진행 막대 추가 (진한색) - 바 두께를 1/3으로 줄임
+            # ✅ 실제 진행 막대 추가 (진한색) - 바 두께 조정
             fig.add_shape(
                 type='rect',
                 x0=row['Actual_Start'],
                 x1=actual_end,
-                y0=i - 0.12,  # ✅ 기존 -0.35에서 -0.12로 줄임 (약 1/3)
-                y1=i + 0.12,  # ✅ 기존 +0.35에서 +0.12로 줄임 (약 1/3)
+                y0=i - 0.15,  # 기존 -0.12에서 -0.15로 조정
+                y1=i + 0.15,  # 기존 +0.12에서 +0.15로 조정
                 fillcolor=category_colors.get(row['Category'], '#808080'),
                 opacity=1.0,  # 진한색
                 line=dict(width=1, color='darkgray'),
                 layer="above"
             )
 
-    # 범례에 계획/실제 구분 설명 추가
+    # ✅ 범례에 계획/실제 구분 설명을 별도 텍스트로 추가 (제목과 겹치지 않게)
     fig.add_annotation(
-        text="■ 연한색: 계획 일정 | ■ 진한색: 실제 진행 (컴팩트 바 적용)",
+        text="■ 연한색: 계획 일정 | ■ 진한색: 실제 진행",
         xref="paper", yref="paper",
-        x=0, y=1.15,
+        x=0.5, y=-0.25,  # 범례 아래쪽으로 이동
         showarrow=False,
-        font=dict(size=11, color="gray"),
-        align="left"
+        font=dict(size=10, color="gray"),
+        xanchor="center"
     )
 
     # 특정 날짜 마커 추가 (오늘 또는 선택한 날짜)
@@ -336,11 +356,14 @@ def gantt_chart():
         x=marker_datetime,
         y=1,
         yref="paper",
-        text=f"기준 날짜: {marker_date.strftime('%Y-%m-%d')}",
+        text=f"📅 {marker_date.strftime('%Y-%m-%d')}",
         showarrow=True,
         arrowhead=1,
         ax=50,
-        ay=-30
+        ay=-30,
+        bgcolor="rgba(255,255,255,0.8)",
+        bordercolor="red",
+        borderwidth=1
     )
 
     # Streamlit 그래프 출력
@@ -549,29 +572,28 @@ def gantt_chart():
     # 사용 방법 안내
     with st.expander("📖 사용 방법"):
         st.markdown("""
-        ### 🔧 Version 2.0 주요 업데이트
+        ### 🔧 Version 2.1 주요 개선사항
         
-        1. **✅ 엑셀 입력 순서 정렬**:
-           - 엑셀 파일에 입력된 순서대로 간트차트가 표시됩니다.
-           - 엑셀에서 작업 순서를 조정하여 원하는 순서로 배치할 수 있습니다.
+        1. **✅ 항목간 거리 최적화**:
+           - 확대/축소 시에도 적절한 간격이 유지됩니다.
+           - bargap을 0.4로 조정하여 더 균형잡힌 레이아웃을 제공합니다.
         
-        2. **✅ 컴팩트 바 적용**:
-           - 바 크기를 기존의 1/3 수준으로 축소했습니다.
-           - 더 많은 작업을 한 화면에서 확인할 수 있습니다.
+        2. **✅ 범례 위치 개선**:
+           - 범례가 차트 아래쪽으로 이동하여 제목과 겹치지 않습니다.
+           - 반투명 배경과 테두리를 추가하여 가독성을 향상시켰습니다.
         
-        3. **📈 진행 상황 업데이트**:
+        3. **✅ 레이아웃 최적화**:
+           - 여백을 조정하여 모든 요소가 적절히 배치됩니다.
+           - 제목을 중앙 정렬하여 균형감을 개선했습니다.
+        
+        4. **📈 진행 상황 업데이트**:
            - 사이드바에서 작업을 선택합니다.
            - 실제 시작일과 진행률을 설정합니다.
            - '변경사항 적용' 버튼을 클릭합니다.
         
-        4. **📊 상태 확인**:
+        5. **📊 상태 확인**:
            - 각 작업의 진행 상태는 '작업별 진행 상황' 테이블에서 확인할 수 있습니다.
            - 완료된 작업은 녹색, 지연된 작업은 빨간색으로 표시됩니다.
-           - 계획 대비 진행률 차이를 통해 작업이 일정보다 앞서가는지 또는 지연되는지 확인할 수 있습니다.
-        
-        5. **💾 파일 저장**:
-           - '엑셀로 내보내기' 버튼을 클릭하여 현재 작업 상태를 저장할 수 있습니다.
-           - 저장된 파일은 다음에 업로드하여 계속 진행 상황을 업데이트할 수 있습니다.
         
         ### 📊 간트 차트 읽는 방법
         
@@ -579,6 +601,6 @@ def gantt_chart():
         - **진한색 막대**: 실제 진행 상황 (진행률에 따라 길이 조정)
         - **빨간 점선**: 오늘 날짜 (또는 선택한 기준 날짜)
         - **색상**: 작업 카테고리별로 구분
-        - **같은 행**: 계획과 실제가 같은 작업 행에 표시되어 비교하기 쉬움
-        - **✅ 컴팩트 바**: 기존 대비 1/3 크기로 조정하여 더 많은 작업을 한 눈에 볼 수 있음
+        - **범례**: 차트 아래쪽에 배치되어 제목과 겹치지 않음
+        - **확대/축소**: 항목간 거리가 일정하게 유지됨
         """)
