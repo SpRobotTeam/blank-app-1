@@ -1,0 +1,201 @@
+/* 모든 페이지에 적용할 공통 스타일 */
+.tool-header {
+    padding: 1rem 0;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(49, 51, 63, 0.2);
+}
+
+.tool-description {
+    font-size: 1.1rem;
+    color: #666;
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+}
+
+/* 반응형 레이아웃 */
+@media screen and (max-width: 768px) {
+    .hide-mobile {
+        display: none !important;
+    }
+    
+    .mobile-full-width {
+        width: 100% !important;
+    }
+    
+    .stColumns {
+        flex-direction: column;
+    }
+}
+
+/* 버튼 스타일 통일 */
+.stButton > button {
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.stButton.primary > button {
+    background-color: #4e73df;
+    color: white;
+}
+
+.stButton.primary > button:hover {
+    background-color: #2e59d9;
+    transform: translateY(-1px);
+}
+
+.stButton.secondary > button {
+    background-color: #f8f9fa;
+    color: #333;
+    border: 1px solid #ddd;
+}
+
+.stButton.secondary > button:hover {
+    background-color: #e9ecef;
+}
+
+/* 데이터 테이블 스타일 */
+.dataframe {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.dataframe th {
+    background-color: #f1f3f5;
+    padding: 12px 8px;
+    text-align: left;
+    border: 1px solid #ddd;
+    font-weight: 600;
+}
+
+.dataframe td {
+    padding: 10px 8px;
+    border: 1px solid #ddd;
+}
+
+.dataframe tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.dataframe tr:hover {
+    background-color: #e9ecef;
+}
+
+/* 사이드바 스타일 */
+.css-1d391kg {
+    padding-top: 1rem;
+}
+
+/* 메트릭 카드 스타일 */
+.metric-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin: 1rem 0;
+}
+
+/* 성공/에러 메시지 스타일 */
+.stAlert {
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+/* 진행률 바 스타일 */
+.stProgress .st-bo {
+    background-color: #e9ecef;
+    border-radius: 10px;
+}
+
+.stProgress .st-bp {
+    background-color: #4e73df;
+    border-radius: 10px;
+}
+
+/* 파일 업로드 영역 스타일 */
+.uploadedFile {
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    margin: 1rem 0;
+    transition: border-color 0.3s ease;
+}
+
+.uploadedFile:hover {
+    border-color: #4e73df;
+}
+
+/* 다크 모드 대응 */
+.dark-mode .tool-description {
+    color: #aaa;
+}
+
+.dark-mode .dataframe th {
+    background-color: #2d3748;
+    color: #f8f9fa;
+    border-color: #4a5568;
+}
+
+.dark-mode .dataframe td {
+    border-color: #4a5568;
+    background-color: #1a202c;
+    color: #f8f9fa;
+}
+
+.dark-mode .dataframe tr:nth-child(even) {
+    background-color: #2d3748;
+}
+
+.dark-mode .dataframe tr:hover {
+    background-color: #4a5568;
+}
+
+.dark-mode .metric-card {
+    background-color: #2d3748;
+    color: #f8f9fa;
+}
+
+/* 애니메이션 */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+/* 툴팁 스타일 */
+.tooltip {
+    position: relative;
+    display: inline-block;
+    cursor: help;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 200px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 8px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -100px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
