@@ -207,7 +207,6 @@ def create_gantt_chart(sorted_df, marker_date):
         y="Task",
         color="Category",
         color_discrete_map=category_colors,
-        title='📊 프로젝트 진행 간트 차트',
         labels={'Task': '작업', 'Start': '시작 날짜', 'End': '종료 날짜', 'Category': '카테고리'}
     )
     
@@ -264,31 +263,34 @@ def update_chart_layout(fig, sorted_df):
             gridwidth=0.5
         ),
         title=dict(
+            text='📊 프로젝트 진행 간트 차트',
             font=dict(size=18),
             x=0.5,
-            xanchor='center'
+            xanchor='center',
+            y=0.98,
+            yanchor='top'
         ),
         font=dict(size=11),
         bargap=0.3,
-        height=600,
+        height=650,
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=1.05,
+            y=1.02,
             xanchor="center",
             x=0.5,
             bgcolor="rgba(255,255,255,0.9)",
             bordercolor="lightgrey",
             borderwidth=1
         ),
-        margin=dict(l=150, r=50, t=120, b=50)
+        margin=dict(l=150, r=50, t=150, b=50)
     )
     
-    # 범례 설명 추가
+    # 범례 설명 추가 (제목과 범례 사이에 위치)
     fig.add_annotation(
         text="■ 연한색: 계획 일정 | ■ 진한색: 실제 진행",
         xref="paper", yref="paper",
-        x=0.5, y=1.15,
+        x=0.5, y=1.08,
         showarrow=False,
         font=dict(size=10, color="gray"),
         xanchor="center"
