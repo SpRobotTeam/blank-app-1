@@ -52,6 +52,9 @@ def gantt_chart():
                 if 'Category' not in df.columns:
                     df['Category'] = df['Task'].apply(lambda x: x.split('_')[0] if '_' in x else 'Unknown')
                 
+                # 원본 순서를 유지하기 위해 인덱스 추가
+                df['Original_Order'] = df.index
+                
                 # 세션 상태에 데이터 저장
                 st.session_state.df_data = df
                 st.session_state.file_uploaded = True
@@ -83,6 +86,9 @@ def gantt_chart():
             - **Progress**: 작업 진행률 (0-100 사이의 숫자)
             - **Actual_Start**: 실제 시작 날짜 (YYYY-MM-DD 형식)
             - **Category**: 작업 카테고리 (없으면 Task에서 '_'로 자동 추출)
+            
+            #### 정렬 기준:
+            - 엑셀 파일에 입력된 순서대로 차트가 표시됩니다.
             """)
             
             # 샘플 데이터 표시
@@ -152,14 +158,9 @@ def gantt_chart():
             )
             return
 
-    # 사용자 설정 옵션
+    # 사용자 설정 옵션 (정렬 기준 제거 - 엑셀 순서대로 표시)
     st.sidebar.header("설정 옵션")
-    order_by = st.radio(
-        "정렬 기준을 선택하세요:",
-        ('Start', 'End', 'Category'),
-        index=0,
-        horizontal=True
-    )
+    st.sidebar.info("💡 차트는 엑셀 파일에 입력된 순서대로 표시됩니다.")
 
     # 진행 상황 업데이트
     st.sidebar.subheader("진행 상황 업데이트")
@@ -198,8 +199,12 @@ def gantt_chart():
         # df 변수 업데이트 - 세션 상태에서 가져온 데이터를 다시 사용
         df = st.session_state.df_data
 
-    # 정렬 기준에 따라 데이터프레임 정렬
-    sorted_df = df.sort_values(by=order_by)
+    # 엑셀 파일의 원본 순서를 유지 (Original_Order 기준으로 정렬)
+    if 'Original_Order' in df.columns:
+        sorted_df = df.sort_values(by='Original_Order')
+    else:
+        # Original_Order가 없는 경우 현재 인덱스 순서 유지
+        sorted_df = df.copy()
 
     # 카테고리별 색상 지정 (고정 색상 사용)
     category_colors = {
@@ -231,14 +236,14 @@ def gantt_chart():
         y="Task",
         color="Category",
         color_discrete_map=category_colors,
-        title='프로젝트 진행 간트 차트',
+        title='프로젝트 진행 간트 차트 (엑셀 입력 순서)',
         labels={'Task': '작업', 'Start': '시작 날짜', 'End': '종료 날짜', 'Category': '카테고리'}
     )
     
     # 계획 일정을 연하게 만들기 (투명도 조정)
     fig.update_traces(opacity=0.4)
     
-    # 차트 레이아웃 조정
+    # 차트 레이아웃 조정 - 바 크기를 1/3으로 줄임
     fig.update_layout(
         yaxis=dict(
             autorange='reversed',  # Task가 위에서 아래로 나열되도록 설정
@@ -257,8 +262,8 @@ def gantt_chart():
         ),
         title=dict(font=dict(size=20)),
         font=dict(size=12),
-        bargap=0.3,
-        height=max(400, len(sorted_df) * 40 + 200),
+        bargap=0.7,  # 기존 0.3에서 0.7로 증가하여 바 간격 확대
+        height=max(400, len(sorted_df) * 25 + 200),  # 기존 40에서 25로 줄임
         legend=dict(
             orientation="h",
             yanchor="bottom",
@@ -268,20 +273,20 @@ def gantt_chart():
         )
     )
 
-    # 실제 진행 상황 추가 (기존 방식 활용 - add_shape 사용)
+    # 실제 진행 상황 추가 (기존 방식 활용 - add_shape 사용) - 바 크기 1/3으로 줄임
     for i, row in sorted_df.iterrows():
         if pd.notna(row.get('Actual_Start')) and row['Progress'] > 0:
             # 진행률에 따른 종료 시점 계산
             actual_duration = (row['End'] - row['Start']).total_seconds() * (row['Progress'] / 100)
             actual_end = row['Actual_Start'] + timedelta(seconds=actual_duration)
             
-            # 실제 진행 막대 추가 (진한색)
+            # 실제 진행 막대 추가 (진한색) - 바 두께를 1/3으로 줄임
             fig.add_shape(
                 type='rect',
                 x0=row['Actual_Start'],
                 x1=actual_end,
-                y0=i - 0.35,  # 계획 막대보다 약간 작게
-                y1=i + 0.35,
+                y0=i - 0.12,  # 기존 -0.35에서 -0.12로 줄임 (약 1/3)
+                y1=i + 0.12,  # 기존 +0.35에서 +0.12로 줄임 (약 1/3)
                 fillcolor=category_colors.get(row['Category'], '#808080'),
                 opacity=1.0,  # 진한색
                 line=dict(width=1, color='darkgray'),
@@ -443,8 +448,8 @@ def gantt_chart():
     
     st.plotly_chart(fig_status, use_container_width=True)
     
-    # 작업 상태 테이블
-    st.subheader("작업별 진행 상황")
+    # 작업 상태 테이블 (엑셀 입력 순서대로 표시)
+    st.subheader("작업별 진행 상황 (엑셀 입력 순서)")
     
     # 표시할 열 선택
     display_df = sorted_df[['Task', 'Category', 'Start', 'End', 'Actual_Start', 
@@ -507,6 +512,10 @@ def gantt_chart():
                     lambda x: x.strftime('%Y-%m-%d') if pd.notna(x) else None
                 )
             
+            # Original_Order 열 제거 (내보내기 시 불필요)
+            if 'Original_Order' in export_df.columns:
+                export_df = export_df.drop(columns=['Original_Order'])
+            
             # 파일에 저장
             export_df.to_excel(writer, index=False, sheet_name='Gantt Chart')
         
@@ -528,17 +537,21 @@ def gantt_chart():
         st.markdown("""
         ### 사용 방법
         
-        1. **진행 상황 업데이트**:
+        1. **정렬 기준**:
+           - 엑셀 파일에 입력된 순서대로 간트차트가 표시됩니다.
+           - 엑셀에서 작업 순서를 조정하여 원하는 순서로 배치할 수 있습니다.
+        
+        2. **진행 상황 업데이트**:
            - 사이드바에서 작업을 선택합니다.
            - 실제 시작일과 진행률을 설정합니다.
            - '변경사항 적용' 버튼을 클릭합니다.
         
-        2. **상태 확인**:
+        3. **상태 확인**:
            - 각 작업의 진행 상태는 '작업별 진행 상황' 테이블에서 확인할 수 있습니다.
            - 완료된 작업은 녹색, 지연된 작업은 빨간색으로 표시됩니다.
            - 계획 대비 진행률 차이를 통해 작업이 일정보다 앞서가는지 또는 지연되는지 확인할 수 있습니다.
         
-        3. **파일 저장**:
+        4. **파일 저장**:
            - '엑셀로 내보내기' 버튼을 클릭하여 현재 작업 상태를 저장할 수 있습니다.
            - 저장된 파일은 다음에 업로드하여 계속 진행 상황을 업데이트할 수 있습니다.
         
@@ -549,4 +562,5 @@ def gantt_chart():
         - **빨간 점선**: 오늘 날짜 (또는 선택한 기준 날짜)
         - **색상**: 작업 카테고리별로 구분
         - **같은 행**: 계획과 실제가 같은 작업 행에 표시되어 비교하기 쉬움
+        - **바 크기**: 기존 대비 1/3 크기로 조정하여 더 많은 작업을 한 눈에 볼 수 있음
         """)
