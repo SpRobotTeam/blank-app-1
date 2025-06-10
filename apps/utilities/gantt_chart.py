@@ -260,14 +260,19 @@ def update_chart_layout(fig, sorted_df):
             linecolor="lightgrey", 
             showgrid=True,
             gridcolor="lightgrey",
-            gridwidth=0.5
+            gridwidth=0.5,
+            side="top",  # 날짜 축을 위쪽으로 이동
+            title=dict(
+                text="날짜",
+                standoff=10
+            )
         ),
         title=dict(
             text='📊 프로젝트 진행 간트 차트',
             font=dict(size=18),
             x=0.5,
             xanchor='center',
-            y=0.98,
+            y=0.95,
             yanchor='top'
         ),
         font=dict(size=11),
@@ -275,22 +280,22 @@ def update_chart_layout(fig, sorted_df):
         height=650,
         legend=dict(
             orientation="h",
-            yanchor="bottom",
-            y=1.02,
+            yanchor="top",
+            y=-0.05,  # 범례를 차트 아래쪽으로 이동
             xanchor="center",
             x=0.5,
             bgcolor="rgba(255,255,255,0.9)",
             bordercolor="lightgrey",
             borderwidth=1
         ),
-        margin=dict(l=150, r=50, t=150, b=50)
+        margin=dict(l=150, r=50, t=120, b=80)  # 아래쪽 마진 증가
     )
     
-    # 범례 설명 추가 (제목과 범례 사이에 위치)
+    # 범례 설명 추가 (차트 아래쪽, 범례 위에 위치)
     fig.add_annotation(
         text="■ 연한색: 계획 일정 | ■ 진한색: 실제 진행",
         xref="paper", yref="paper",
-        x=0.5, y=1.08,
+        x=0.5, y=-0.02,
         showarrow=False,
         font=dict(size=10, color="gray"),
         xanchor="center"
