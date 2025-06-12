@@ -79,58 +79,64 @@ if 'screen_width' not in st.session_state:
     st.session_state.screen_width = 1200
 if 'current_tool' not in st.session_state:
     st.session_state.current_tool = "3D 선형성 평가"
+if 'active_category' not in st.session_state:
+    st.session_state.active_category = "analysis"
 
 # 사이드바 구성
 with st.sidebar:
     st.title("🛠️ 분석 도구 모음")
     st.markdown("---")
     
-    # 카테고리별 도구 선택
-    st.header("📊 분석 도구")
-    analysis_tool = st.radio(
-        "분석 도구 선택:",
-        ("3D 선형성 평가", "속도 및 가속도 분석"),
-        key="analysis_tool"
+    # 카테고리 선택
+    category = st.radio(
+        "카테고리 선택:",
+        ("📊 분석 도구", "🤖 시뮬레이션 도구", "🔧 유틸리티 도구", "🎮 게임"),
+        key="category_selector"
     )
     
-    st.header("🤖 시뮬레이션 도구")
-    simulation_tool = st.radio(
-        "시뮬레이션 도구 선택:",
-        ("수륙 양용 기차", "로봇 자율주행 시뮬레이션", "로봇 자율주행 시뮬레이션 V2"),
-        key="simulation_tool"
-    )
-    
-    st.header("🔧 유틸리티 도구")
-    utility_tool = st.radio(
-        "유틸리티 도구 선택:",
-        ("프로젝트 진행 간트 차트", "모터 용량 계산", "게시판"),
-        key="utility_tool"
-    )
-    
-    st.header("🎮 게임")
-    game_tool = st.radio(
-        "게임 선택:",
-        ("오목 게임",),
-        key="game_tool"
-    )
-    
-    # 현재 선택된 도구 결정 (라디오 버튼 변경 감지)
-    current_selections = {
-        "analysis": analysis_tool,
-        "simulation": simulation_tool,
-        "utility": utility_tool,
-        "game": game_tool
+    # 카테고리 매핑
+    category_map = {
+        "📊 분석 도구": "analysis",
+        "🤖 시뮬레이션 도구": "simulation",
+        "🔧 유틸리티 도구": "utility",
+        "🎮 게임": "game"
     }
     
-    # 변경된 선택 찾기
-    for category, selection in current_selections.items():
-        if st.session_state.get(f"last_{category}", "") != selection:
-            st.session_state.current_tool = selection
-            st.session_state[f"last_{category}"] = selection
-            # 다른 카테고리 초기화
-            for other_cat in current_selections:
-                if other_cat != category:
-                    st.session_state[f"last_{other_cat}"] = ""
+    # 현재 활성 카테고리 설정
+    st.session_state.active_category = category_map[category]
+    
+    # 카테고리별 도구 선택 표시
+    if st.session_state.active_category == "analysis":
+        selected_tool = st.radio(
+            "분석 도구 선택:",
+            ("3D 선형성 평가", "속도 및 가속도 분석"),
+            key="analysis_selector"
+        )
+        st.session_state.current_tool = selected_tool
+        
+    elif st.session_state.active_category == "simulation":
+        selected_tool = st.radio(
+            "시뮬레이션 도구 선택:",
+            ("수륙 양용 기차", "로봇 자율주행 시뮬레이션", "로봇 자율주행 시뮬레이션 V2"),
+            key="simulation_selector"
+        )
+        st.session_state.current_tool = selected_tool
+        
+    elif st.session_state.active_category == "utility":
+        selected_tool = st.radio(
+            "유틸리티 도구 선택:",
+            ("프로젝트 진행 간트 차트", "모터 용량 계산", "게시판"),
+            key="utility_selector"
+        )
+        st.session_state.current_tool = selected_tool
+        
+    elif st.session_state.active_category == "game":
+        selected_tool = st.radio(
+            "게임 선택:",
+            ("오목 게임",),
+            key="game_selector"
+        )
+        st.session_state.current_tool = selected_tool
     
     st.markdown("---")
     
@@ -194,6 +200,8 @@ if current_tool:
     except Exception as e:
         st.error(f"도구 실행 중 오류가 발생했습니다: {str(e)}")
         st.info("💡 문제가 지속되면 페이지를 새로고침하거나 관리자에게 문의하세요.")
+else:
+    st.info("👈 사이드바에서 도구를 선택해주세요.")
 
 # 푸터
 st.markdown("---")
