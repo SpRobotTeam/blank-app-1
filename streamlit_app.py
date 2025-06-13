@@ -50,6 +50,10 @@ MODULE_MAP = {
     "3D 선형성 평가": "apps.analysis.linear_analysis:linearity_analysis",
     "속도 및 가속도 분석": "apps.analysis.speed_analysis:speed_analysis",
     
+    # 프로젝트 분석
+    "프로젝트 BOM 분석": "apps.project.project_analysis:project_analysis",
+    "GANTY-LODER 프로젝트 분석": "apps.project.ganty_loader_analysis:ganty_loader_analysis",
+    
     # 시뮬레이션 도구
     "수륙 양용 기차": "apps.simulation.amphibious_train:display_amphibious_train_project",
     "로봇 자율주행 시뮬레이션": "apps.simulation.robot_simulation:robotsimulation",
@@ -90,13 +94,14 @@ with st.sidebar:
     # 카테고리 선택
     category = st.radio(
         "카테고리 선택:",
-        ("📊 분석 도구", "🤖 시뮬레이션 도구", "🔧 유틸리티 도구", "🎮 게임"),
+        ("📊 분석 도구", "📈 프로젝트 분석", "🤖 시뮬레이션 도구", "🔧 유틸리티 도구", "🎮 게임"),
         key="category_selector"
     )
     
     # 카테고리 매핑
     category_map = {
         "📊 분석 도구": "analysis",
+        "📈 프로젝트 분석": "project",
         "🤖 시뮬레이션 도구": "simulation",
         "🔧 유틸리티 도구": "utility",
         "🎮 게임": "game"
@@ -111,6 +116,14 @@ with st.sidebar:
             "분석 도구 선택:",
             ("3D 선형성 평가", "속도 및 가속도 분석"),
             key="analysis_selector"
+        )
+        st.session_state.current_tool = selected_tool
+        
+    elif st.session_state.active_category == "project":
+        selected_tool = st.radio(
+            "프로젝트 분석 도구 선택:",
+            ("프로젝트 BOM 분석", "GANTY-LODER 프로젝트 분석"),
+            key="project_selector"
         )
         st.session_state.current_tool = selected_tool
         
