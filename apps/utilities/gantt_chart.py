@@ -364,7 +364,7 @@ def display_project_analysis(sorted_df, marker_date):
     analysis_data = analyze_project_status(sorted_df, marker_date)
     
     # 요약 지표 표시
-    display_summary_metrics(analysis_data)
+    display_summary_metrics(analysis_data['summary_metrics'])
     
     # 상태별 분포 차트
     display_status_chart(analysis_data['status_counts'])
