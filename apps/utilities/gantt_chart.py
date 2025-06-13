@@ -57,7 +57,7 @@ def gantt_chart():
         # 새로고침 버튼
         if st.button("🔄 새로고침", key="refresh_page", help="페이지를 새로고침합니다."):
             st.session_state.clear()
-            st.experimental_rerun()
+            st.rerun()  # st.experimental_rerun()에서 st.rerun()으로 변경
 
     # 파일 처리
     if uploaded_file is not None:
@@ -192,7 +192,7 @@ def display_sidebar_controls(df):
         st.session_state.df_data.at[task_idx, 'Actual_Start'] = actual_start_date
         st.session_state.df_data.at[task_idx, 'Progress'] = progress
         st.sidebar.success(f"'{selected_task}'의 정보가 업데이트되었습니다.")
-        st.experimental_rerun()
+        st.rerun()  # st.experimental_rerun()에서 st.rerun()으로 변경
 
 def create_gantt_chart(sorted_df, marker_date):
     """간트 차트 생성"""

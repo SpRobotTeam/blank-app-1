@@ -164,7 +164,7 @@ with st.sidebar:
     
     # 새로고침 버튼
     if st.button("🔄 페이지 새로고침"):
-        st.experimental_rerun()
+        st.rerun()  # st.experimental_rerun()에서 st.rerun()으로 변경
     
     # 정보 표시
     st.markdown("---")

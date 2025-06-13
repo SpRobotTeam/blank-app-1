@@ -98,7 +98,7 @@ def posting():
                 if st.button(f"삭제: {post['title']}", key=f"delete_{index}"):
                     delete_post(index)
                     st.warning(f"'{post['title']}' 게시글이 삭제되었습니다.")
-                    st.experimental_rerun()  # 페이지 새로고침
+                    st.rerun()  # st.experimental_rerun()에서 st.rerun()으로 변경
         else:
             st.info("게시글이 없습니다.")
 
@@ -121,6 +121,6 @@ def posting():
                     if submitted:
                         edit_post(index, new_title, new_content)
                         st.success(f"'{new_title}' 게시글이 수정되었습니다.")
-                        st.experimental_rerun()
+                        st.rerun()  # st.experimental_rerun()에서 st.rerun()으로 변경
         else:
             st.info("게시글이 없습니다.")

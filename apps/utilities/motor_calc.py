@@ -793,7 +793,7 @@ def display_batch_results(results: pd.DataFrame):
                 with col2:
                     st.markdown("**📈 성능 지표**")
                     torque_percentile = (numeric_results['Motor Torque (Nm)'].astype(float) < float(optimal_design['Motor Torque (Nm)'])).mean() * 100
-                    safety_percentile = (numeric_results['Safety Margin'].astype(float) < float(optimal_design['Safety Margin']'])).mean() * 100
+                    safety_percentile = (numeric_results['Safety Margin'].astype(float) < float(optimal_design['Safety Margin'])).mean() * 100
                     
                     st.write(f"토크 순위: 하위 {torque_percentile:.1f}%")
                     st.write(f"안전성 순위: 상위 {100-safety_percentile:.1f}%")
