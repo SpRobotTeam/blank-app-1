@@ -184,7 +184,7 @@ with st.sidebar:
     st.markdown("### 📋 정보")
     st.markdown("**Version:** 2.0")
     st.markdown("**업데이트:** 2025-06-10")
-    st.markdown("**개발자:** ABB TSU Team")
+    st.markdown("**개발자:** SPsystems 연구소 개발팀")
 
 # 메인 컨텐츠 영역
 current_tool = st.session_state.current_tool
@@ -221,7 +221,7 @@ st.markdown("---")
 st.markdown(
     """
     <div style='text-align: center; color: #666; padding: 20px;'>
-        <p>🛠️ <strong>다기능 분석 도구</strong> | 개발: ABB TSU Team | 
+        <p>🛠️ <strong>다기능 분석 도구</strong> | 개발: SPsystems 연구소 개발팀 | 
         <a href='https://github.com' target='_blank'>GitHub</a></p>
     </div>
     """, 

@@ -1,0 +1,65 @@
+name: Deploy Streamlit App
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest
+    
+    - name: Run tests
+      run: |
+        # 기본 import 테스트
+        python -c "import streamlit; import pandas; import plotly"
+        # 앱 구문 검사
+        python -m py_compile streamlit_app.py
+    
+    - name: Check code quality
+      run: |
+        pip install flake8
+        # E501 (line too long) 무시
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+  
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Deploy to Streamlit Cloud
+      # Streamlit Cloud 자동 배포는 연결된 GitHub 리포지토리에서 자동 실행됨
+      run: echo "Streamlit Cloud에서 자동 배포됩니다"
+    
+    # Docker Hub에 배포하는 경우
+    - name: Build and push Docker image
+      if: false  # 필요시 true로 변경
+      run: |
+        docker build -t spsystems/analysis-tool:latest .
+        # docker push spsystems/analysis-tool:latest
