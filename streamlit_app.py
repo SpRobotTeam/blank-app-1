@@ -64,9 +64,9 @@ MODULE_MAP = {
     # 프로젝트 분석
     "프로젝트 BOM 분석": "apps.project.project_analysis:project_analysis",
     "GANTY-LODER 프로젝트 분석": "apps.project.ganty_loader_analysis:ganty_loader_analysis",
+    "수륙양용 기차 프로젝트": "apps.project.amphibious_train:display_amphibious_train_project",
     
     # 시뮬레이션 도구
-    "수륙 양용 기차": "apps.simulation.amphibious_train:display_amphibious_train_project",
     "로봇 자율주행 시뮬레이션": "apps.simulation.robot_simulation:robotsimulation",
     "로봇 자율주행 시뮬레이션 V2": "apps.simulation.robot_simulation_v2:robotsimulation02",
     
@@ -133,7 +133,7 @@ with st.sidebar:
     elif st.session_state.active_category == "project":
         selected_tool = st.radio(
             "프로젝트 분석 도구 선택:",
-            ("프로젝트 BOM 분석", "GANTY-LODER 프로젝트 분석"),
+            ("프로젝트 BOM 분석", "GANTY-LODER 프로젝트 분석", "수륙양용 기차 프로젝트"),
             key="project_selector"
         )
         st.session_state.current_tool = selected_tool
@@ -141,7 +141,7 @@ with st.sidebar:
     elif st.session_state.active_category == "simulation":
         selected_tool = st.radio(
             "시뮬레이션 도구 선택:",
-            ("수륙 양용 기차", "로봇 자율주행 시뮬레이션", "로봇 자율주행 시뮬레이션 V2"),
+            ("로봇 자율주행 시뮬레이션", "로봇 자율주행 시뮬레이션 V2"),
             key="simulation_selector"
         )
         st.session_state.current_tool = selected_tool

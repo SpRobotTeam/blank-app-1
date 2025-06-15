@@ -1,6 +1,6 @@
 {
   "name": "spsystems-multi-analysis-tool",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "SPsystems 연구소 다기능 분석 도구",
   "author": "SPsystems 연구소 개발팀",
   "license": "MIT",
@@ -32,6 +32,14 @@
     "psutil": ">=5.9.0"
   },
   "changelog": {
+    "2.1.1": {
+      "date": "2025-06-15",
+      "changes": [
+        "수륙양용 기차를 시뮬레이션에서 프로젝트 분석으로 이동",
+        "카테고리 분류 정확성 개선",
+        "사용자 인터페이스 개선"
+      ]
+    },
     "2.1.0": {
       "date": "2025-06-15",
       "changes": [
