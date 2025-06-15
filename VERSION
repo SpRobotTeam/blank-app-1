@@ -1,0 +1,8 @@
+{
+  "version": "2.1.0",
+  "build_date": "2025-06-15T10:00:00.000000",
+  "git_commit": "unknown",
+  "developer": "SPsystems 연구소 개발팀",
+  "platform": "Streamlit",
+  "python_version": ">=3.9.0"
+}

@@ -1,0 +1,376 @@
+name: 🚀 SPsystems CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+env:
+  PYTHON_VERSION: '3.9'
+  NODE_VERSION: '18'
+
+jobs:
+  # 🔍 코드 품질 검사
+  code-quality:
+    name: 📊 Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+      
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: 📦 Cache Dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        
+    - name: 🔧 Install Dependencies
+      run: |
+        pip install -r requirements.txt
+        pip install flake8 black isort pytest bandit
+        
+    - name: 🎨 Code Formatting Check
+      run: |
+        black --check --diff .
+        isort --check-only --diff .
+        
+    - name: 🔍 Lint Check
+      run: |
+        flake8 . --max-line-length=88 --extend-ignore=E203,W503
+        
+    - name: 🔒 Security Check
+      run: |
+        bandit -r . -f json -o bandit-report.json || true
+        
+    - name: 📊 Upload Reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: quality-reports
+        path: |
+          bandit-report.json
+
+  # 🧪 테스트 실행
+  test:
+    name: 🧪 Test Suite
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11']
+        
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+      
+    - name: 🐍 Setup Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: 📦 Install Dependencies
+      run: |
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-xdist
+        
+    - name: 🧪 Run Tests
+      run: |
+        # 기본 import 테스트
+        python -c "import streamlit; import pandas; import plotly; import numpy"
+        
+        # 앱 구문 검사
+        python -m py_compile streamlit_app.py
+        
+        # 모든 Python 파일 구문 검사
+        find . -name "*.py" -exec python -m py_compile {} \;
+        
+    - name: 📱 Test Streamlit App
+      run: |
+        # Streamlit 앱 실행 테스트 (백그라운드)
+        timeout 30s streamlit run streamlit_app.py --server.headless true --server.port 8501 &
+        sleep 10
+        
+        # 앱이 정상적으로 실행되는지 확인
+        curl -f http://localhost:8501 || exit 1
+
+  # 📝 버전 관리
+  version-management:
+    name: 📝 Version Management
+    runs-on: ubuntu-latest
+    needs: [code-quality, test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      version-changed: ${{ steps.version.outputs.changed }}
+      
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+        
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: 📊 Get Current Version
+      id: current-version
+      run: |
+        if [ -f VERSION ]; then
+          CURRENT_VERSION=$(python -c "import json; print(json.load(open('VERSION'))['version'])")
+        else
+          CURRENT_VERSION="1.0.0"
+        fi
+        echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+        
+    - name: 🔄 Auto Version Update
+      id: version
+      run: |
+        # 커밋 메시지 분석
+        COMMIT_MSG="${{ github.event.head_commit.message }}"
+        echo "Commit message: $COMMIT_MSG"
+        
+        # 버전 타입 결정
+        if [[ $COMMIT_MSG =~ ^(BREAKING CHANGE|major:|feat\!:) ]]; then
+          VERSION_TYPE="major"
+        elif [[ $COMMIT_MSG =~ ^(feat:|feature:) ]]; then
+          VERSION_TYPE="minor"
+        elif [[ $COMMIT_MSG =~ ^(fix:|bugfix:|hotfix:) ]]; then
+          VERSION_TYPE="patch"
+        else
+          echo "No version update needed"
+          echo "version=${{ steps.current-version.outputs.current }}" >> $GITHUB_OUTPUT
+          echo "changed=false" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        echo "Version update type: $VERSION_TYPE"
+        
+        # 버전 업데이트 실행
+        python scripts/update_version.py --type $VERSION_TYPE --changelog "$COMMIT_MSG"
+        
+        # 새 버전 가져오기
+        NEW_VERSION=$(python scripts/update_version.py --current | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
+        echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "changed=true" >> $GITHUB_OUTPUT
+        
+        # Git 설정
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # 변경사항 커밋
+        if [[ -n $(git status --porcelain) ]]; then
+          git add .
+          git commit -m "chore: auto-bump version to $NEW_VERSION"
+          git push
+          
+          # 태그 생성
+          git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
+          git push origin "v$NEW_VERSION"
+        fi
+
+  # 🐳 Docker 빌드
+  docker-build:
+    name: 🐳 Docker Build
+    runs-on: ubuntu-latest
+    needs: [test, version-management]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+      
+    - name: 🏗️ Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: 🔐 Login to DockerHub
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        
+    - name: 🏷️ Extract Metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: spsystems/analysis-tool
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}},value=${{ needs.version-management.outputs.version }}
+          type=raw,value=latest,enable={{is_default_branch}}
+          
+    - name: 🔨 Build and Push
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # 🚀 배포
+  deploy:
+    name: 🚀 Deploy
+    runs-on: ubuntu-latest
+    needs: [version-management, docker-build]
+    if: github.ref == 'refs/heads/main' && needs.version-management.outputs.version-changed == 'true'
+    
+    environment:
+      name: production
+      url: https://your-streamlit-app.streamlit.app
+      
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+      
+    - name: 🌐 Deploy to Streamlit Cloud
+      run: |
+        echo "🚀 Deploying version ${{ needs.version-management.outputs.version }}"
+        echo "Streamlit Cloud will auto-deploy from main branch"
+        
+    - name: 🔔 Deployment Notification
+      uses: 8398a7/action-slack@v3
+      if: always()
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        text: |
+          🚀 *SPsystems Analysis Tool* 
+          Version: `${{ needs.version-management.outputs.version }}`
+          Status: ${{ job.status }}
+          Branch: ${{ github.ref_name }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # 📋 릴리스 생성
+  create-release:
+    name: 📋 Create Release
+    runs-on: ubuntu-latest
+    needs: [deploy, version-management]
+    if: needs.version-management.outputs.version-changed == 'true'
+    
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: 📝 Generate Changelog
+      id: changelog
+      run: |
+        # 이전 태그부터 현재까지의 커밋 로그 생성
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        
+        if [ -n "$PREVIOUS_TAG" ]; then
+          CHANGELOG=$(git log $PREVIOUS_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges)
+        else
+          CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges -10)
+        fi
+        
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        echo "$CHANGELOG" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
+    - name: 🎉 Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ needs.version-management.outputs.version }}
+        name: 🚀 Release v${{ needs.version-management.outputs.version }}
+        body: |
+          ## 🚀 SPsystems Analysis Tool v${{ needs.version-management.outputs.version }}
+          
+          ### 📋 변경사항
+          ${{ steps.changelog.outputs.changelog }}
+          
+          ### 🛠️ 기술 정보
+          - **커밋**: ${{ github.sha }}
+          - **개발팀**: SPsystems 연구소 개발팀
+          - **빌드 날짜**: ${{ github.event.head_commit.timestamp }}
+          - **Python 버전**: ${{ env.PYTHON_VERSION }}
+          
+          ### 🌐 배포 링크
+          - [Streamlit Cloud](https://your-streamlit-app.streamlit.app)
+          - [Docker Hub](https://hub.docker.com/r/spsystems/analysis-tool)
+          
+          ### 📚 문서
+          - [설치 가이드](./README.md)
+          - [버전 관리 가이드](./VERSIONING_GUIDE.md)
+          - [배포 가이드](./DEPLOYMENT_GUIDE.md)
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 📈 성능 모니터링
+  performance-monitoring:
+    name: 📈 Performance Monitor
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: 📊 Performance Check
+      run: |
+        echo "🔍 Running performance checks..."
+        
+        # 기본 응답 시간 체크
+        APP_URL="https://your-streamlit-app.streamlit.app"
+        RESPONSE_TIME=$(curl -o /dev/null -s -w '%{time_total}' $APP_URL || echo "0")
+        
+        echo "Response time: ${RESPONSE_TIME}s"
+        
+        # 5초 이상이면 경고
+        if (( $(echo "$RESPONSE_TIME > 5" | bc -l) )); then
+          echo "⚠️ Warning: Response time is high!"
+        fi
+
+# 🔄 주간 의존성 업데이트 체크
+  dependency-check:
+    name: 🔄 Dependency Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+      
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: 🔍 Check Outdated Packages
+      run: |
+        pip install pip-check
+        pip-check || true
+        
+    - name: 🔒 Security Audit
+      run: |
+        pip install safety
+        safety check --json --output safety-report.json || true
+        
+    - name: 📊 Upload Security Report
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-reports
+        path: safety-report.json
+
+# 📅 스케줄러 설정
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # 매주 월요일 오전 9시 (의존성 체크)

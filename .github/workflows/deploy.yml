@@ -5,9 +5,34 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  release:
+    types: [published]
+
+env:
+  APP_VERSION: ${{ github.ref_name || 'development' }}
 
 jobs:
+  version-check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Get Version
+      id: get-version
+      run: |
+        if [ -f VERSION ]; then
+          VERSION=$(python -c "import json; print(json.load(open('VERSION'))['version'])")
+        else
+          VERSION="unknown"
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Current version: $VERSION"
+
   test:
+    needs: version-check
     runs-on: ubuntu-latest
     
     steps:
@@ -32,6 +57,11 @@ jobs:
         pip install -r requirements.txt
         pip install pytest
     
+    - name: Version Info
+      run: |
+        echo "Testing version: ${{ needs.version-check.outputs.version }}"
+        python scripts/update_version.py --current
+    
     - name: Run tests
       run: |
         # 기본 import 테스트
@@ -45,8 +75,51 @@ jobs:
         # E501 (line too long) 무시
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
   
+  auto-version-update:
+    needs: [test, version-check]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Auto Version Update
+      run: |
+        # 커밋 메시지에서 버전 타입 감지
+        COMMIT_MSG="${{ github.event.head_commit.message }}"
+        
+        if [[ $COMMIT_MSG == *"BREAKING CHANGE"* ]] || [[ $COMMIT_MSG == *"major:"* ]]; then
+          VERSION_TYPE="major"
+        elif [[ $COMMIT_MSG == *"feat:"* ]] || [[ $COMMIT_MSG == *"feature:"* ]]; then
+          VERSION_TYPE="minor"
+        else
+          VERSION_TYPE="patch"
+        fi
+        
+        echo "Detected version type: $VERSION_TYPE"
+        
+        # 버전 업데이트
+        python scripts/update_version.py --type $VERSION_TYPE --changelog "$COMMIT_MSG"
+        
+        # 변경사항 커밋
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        if [[ -n $(git status --porcelain) ]]; then
+          git add .
+          git commit -m "chore: auto-update version"
+          git push
+        fi
+
   deploy:
-    needs: test
+    needs: [test, version-check]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     
@@ -54,12 +127,44 @@ jobs:
     - uses: actions/checkout@v3
     
     - name: Deploy to Streamlit Cloud
-      # Streamlit Cloud 자동 배포는 연결된 GitHub 리포지토리에서 자동 실행됨
-      run: echo "Streamlit Cloud에서 자동 배포됩니다"
+      run: |
+        echo "Deploying version ${{ needs.version-check.outputs.version }} to Streamlit Cloud"
+        # Streamlit Cloud 자동 배포는 연결된 GitHub 리포지토리에서 자동 실행됨
     
     # Docker Hub에 배포하는 경우
     - name: Build and push Docker image
       if: false  # 필요시 true로 변경
       run: |
+        docker build -t spsystems/analysis-tool:${{ needs.version-check.outputs.version }} .
         docker build -t spsystems/analysis-tool:latest .
+        # docker push spsystems/analysis-tool:${{ needs.version-check.outputs.version }}
         # docker push spsystems/analysis-tool:latest
+
+  create-release:
+    needs: [test, version-check]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Create Release
+      if: contains(github.event.head_commit.message, 'release:')
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ needs.version-check.outputs.version }}
+        release_name: Release v${{ needs.version-check.outputs.version }}
+        body: |
+          ## 🚀 Release v${{ needs.version-check.outputs.version }}
+          
+          ### 📋 변경사항
+          ${{ github.event.head_commit.message }}
+          
+          ### 🛠️ 기술 정보
+          - **커밋**: ${{ github.sha }}
+          - **개발팀**: SPsystems 연구소 개발팀
+          - **빌드 날짜**: ${{ github.event.head_commit.timestamp }}
+        draft: false
+        prerelease: false

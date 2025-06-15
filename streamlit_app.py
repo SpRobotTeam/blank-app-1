@@ -6,6 +6,17 @@ import os
 # 현재 디렉토리를 Python 경로에 추가
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# 버전 정보 가져오기
+try:
+    from utils.version import get_app_version, get_developer, get_build_info
+    APP_VERSION = get_app_version()
+    DEVELOPER = get_developer()
+    BUILD_INFO = get_build_info()
+except ImportError:
+    APP_VERSION = "2.1.0"
+    DEVELOPER = "SPsystems 연구소 개발팀"
+    BUILD_INFO = {"version": "2.1.0", "build_date": "unknown", "git_commit": "unknown"}
+
 # 페이지 설정
 st.set_page_config(
     page_title="🛠️ 다기능 분석 도구",
@@ -182,9 +193,15 @@ with st.sidebar:
     # 정보 표시
     st.markdown("---")
     st.markdown("### 📋 정보")
-    st.markdown("**Version:** 2.0")
-    st.markdown("**업데이트:** 2025-06-10")
-    st.markdown("**개발자:** SPsystems 연구소 개발팀")
+    st.markdown(f"**Version:** {APP_VERSION}")
+    st.markdown(f"**업데이트:** {BUILD_INFO['build_date'][:10] if BUILD_INFO['build_date'] != 'unknown' else '2025-06-15'}")
+    st.markdown(f"**개발자:** {DEVELOPER}")
+    
+    # 빌드 정보 (개발 모드에서만 표시)
+    if BUILD_INFO['git_commit'] != 'unknown':
+        with st.expander("🔧 빌드 정보"):
+            st.code(f"Commit: {BUILD_INFO['git_commit']}")
+            st.code(f"Build: {BUILD_INFO['build_date']}")
 
 # 메인 컨텐츠 영역
 current_tool = st.session_state.current_tool
@@ -219,9 +236,9 @@ else:
 # 푸터
 st.markdown("---")
 st.markdown(
-    """
+    f"""
     <div style='text-align: center; color: #666; padding: 20px;'>
-        <p>🛠️ <strong>다기능 분석 도구</strong> | 개발: SPsystems 연구소 개발팀 | 
+        <p>🛠️ <strong>다기능 분석 도구 v{APP_VERSION}</strong> | 개발: {DEVELOPER} | 
         <a href='https://github.com' target='_blank'>GitHub</a></p>
     </div>
     """, 

@@ -1,0 +1,57 @@
+[flake8]
+# E203: whitespace before ':' (conflicts with black)
+# W503: line break before binary operator (PEP 8 style)
+# E501: line too long (handled by black)
+ignore = E203,W503,E501
+
+max-line-length = 88
+max-complexity = 10
+
+# 검사에서 제외할 파일/디렉토리
+exclude = 
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    env,
+    .env,
+    node_modules,
+    .streamlit,
+    logs,
+    .pytest_cache,
+    build,
+    dist,
+    *.egg-info
+
+# 검사할 파일 확장자
+filename = *.py
+
+# 경고 수준 설정
+select = 
+    E,    # pycodestyle errors
+    W,    # pycodestyle warnings  
+    F,    # pyflakes
+    C,    # mccabe complexity
+
+per-file-ignores =
+    # 테스트 파일에서는 일부 규칙 완화
+    tests/*.py: F401,F811
+    # Streamlit 앱에서는 import 순서 무시
+    streamlit_app.py: F401
+    # 스크립트 파일에서는 print 사용 허용
+    scripts/*.py: T201
+
+# docstring 관련 설정
+docstring-convention = google
+
+# import 관련 설정
+import-order-style = google
+application-import-names = apps,utils,scripts
+
+[pycodestyle]
+max-line-length = 88
+ignore = E203,W503
+
+[pydocstyle]
+inherit = false
+ignore = D100,D101,D102,D103,D104,D105,D106,D107,D203,D204,D213,D215,D400,D401,D404,D406,D407,D408,D409,D413
