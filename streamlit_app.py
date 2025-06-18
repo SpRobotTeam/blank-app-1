@@ -70,6 +70,12 @@ MODULE_MAP = {
     "로봇 자율주행 시뮬레이션": "apps.simulation.robot_simulation:robotsimulation",
     "로봇 자율주행 시뮬레이션 V2": "apps.simulation.robot_simulation_v2:robotsimulation02",
     
+    # 연구 문서
+    "연구 대시보드": "apps.research.dashboard:research_dashboard",
+    "연구 노트 뷰어": "apps.research.research_notes:research_notes_viewer",
+    "기술 백서": "apps.research.technical_paper:technical_paper_viewer",
+    "연구 일정": "apps.research.schedule:schedule_viewer",
+    
     # 유틸리티 도구
     "프로젝트 진행 간트 차트": "apps.utilities.gantt_chart:gantt_chart",
     "모터 용량 계산": "apps.utilities.motor_calc:motor_calc",
@@ -105,7 +111,7 @@ with st.sidebar:
     # 카테고리 선택
     category = st.radio(
         "카테고리 선택:",
-        ("📊 분석 도구", "📈 프로젝트 분석", "🤖 시뮬레이션 도구", "🔧 유틸리티 도구", "🎮 게임"),
+        ("📊 분석 도구", "📈 프로젝트 분석", "🤖 시뮬레이션 도구", "📝 연구 문서", "🔧 유틸리티 도구", "🎮 게임"),
         key="category_selector"
     )
     
@@ -114,6 +120,7 @@ with st.sidebar:
         "📊 분석 도구": "analysis",
         "📈 프로젝트 분석": "project",
         "🤖 시뮬레이션 도구": "simulation",
+        "📝 연구 문서": "research",
         "🔧 유틸리티 도구": "utility",
         "🎮 게임": "game"
     }
@@ -143,6 +150,14 @@ with st.sidebar:
             "시뮬레이션 도구 선택:",
             ("로봇 자율주행 시뮬레이션", "로봇 자율주행 시뮬레이션 V2"),
             key="simulation_selector"
+        )
+        st.session_state.current_tool = selected_tool
+        
+    elif st.session_state.active_category == "research":
+        selected_tool = st.radio(
+            "연구 문서 도구 선택:",
+            ("연구 대시보드", "연구 노트 뷰어", "기술 백서", "연구 일정"),
+            key="research_selector"
         )
         st.session_state.current_tool = selected_tool
         
